@@ -1,0 +1,48 @@
+services:
+  parser:
+    image: spring-parser:latest
+    build:
+      context: ./spring_app/vkparser
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      #redis todo
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+
+  tg-bot:
+    image: tg-bot:latest
+    build:
+      context: ./python_app/vkparser
+      dockerfile: Dockerfile
+    depends_on:
+      parser:
+        condition: service_healthy
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${DB_USER} -d $${DB_NAME}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+  redis:
+    #todo
+volumes:
+  db_data:
+
+networks:
+  mynetwork:
+    driver: bridge
