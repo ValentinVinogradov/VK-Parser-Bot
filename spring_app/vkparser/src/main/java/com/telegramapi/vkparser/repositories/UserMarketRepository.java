@@ -1,4 +1,9 @@
 package com.telegramapi.vkparser.repositories;
 
-public interface UserMarketRepository {
+import com.telegramapi.vkparser.models.UserMarket;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserMarketRepository extends JpaRepository<UserMarket, Long> {
 }

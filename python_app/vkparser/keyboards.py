@@ -1,10 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from dotenv import load_dotenv
+from urllib.parse import urlencode, quote
 
-import os
-
-
-load_dotenv()
+from os import getenv
 
 
 
@@ -19,25 +16,23 @@ main_menu_keyboard = ReplyKeyboardMarkup(
 
 # Меню настроек (inline-кнопки)
 def settings_menu_keyboard(tg_id: int) -> InlineKeyboardMarkup:
-    vk_main_url = os.environ.get("VK_MAIN_URL")
-    vk_client_id = os.getenv("VK_CLIENT_ID")
-    vk_redirect_uri = os.getenv("VK_REDIRECT_URI")
-    vk_scope = os.getenv("VK_SCOPE")
-    vk_state = os.getenv("VK_STATE")
-    code_challenge = os.getenv("CODE_CHALLENGE")
-    code_challenge_method = os.getenv("CODE_CHALLENGE_METHOD")
-    response_type = os.getenv("RESPONSE_TYPE")
+    vk_auth_url = getenv("VK_AUTH_URL")
     
-    vk_redirect_uri = vk_redirect_uri + f"?tg_id={tg_id}"
+    params = {
+        "response_type": getenv("VK_RESPONSE_TYPE"),
+        "client_id": getenv("VK_CLIENT_ID"),
+        "redirect_uri": getenv("VK_CLEAN_REDIRECT_URI") + f"?tg_id={tg_id}",
+        "scope": getenv("VK_SCOPE"),
+        "state": getenv("VK_STATE"),
+        "code_challenge": getenv("VK_CODE_CHALLENGE"),
+        "code_challenge_method": getenv("VK_CODE_CHALLENGE_METHOD")
+    }
     
-    vk_id_url = f"{vk_main_url}?response_type={response_type}"
-    vk_id_url += f"&client_id={vk_client_id}&redirect_uri={vk_redirect_uri}"
-    vk_id_url += f"&scope={vk_scope}&state={vk_state}&response_type={response_type}"
-    vk_id_url += f"&code_challenge={code_challenge}&code_challenge_method={code_challenge_method}"
+    url = "?".join([vk_auth_url, urlencode(params, quote_via=quote, safe="?=")])
     
     settings_menu_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="🔗 Войти через VK", callback_data="login_vk", url=vk_id_url)],
+        [InlineKeyboardButton(text="🔗 Войти через VK", callback_data="login_vk", url=url)],
         [InlineKeyboardButton(text="🔁 Сменить VK аккаунт", callback_data="switch_vk_account")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="back_from_settings")]
     ])

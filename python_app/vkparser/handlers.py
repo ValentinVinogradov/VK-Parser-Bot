@@ -37,3 +37,5 @@ async def switch_vk_callback(callback: CallbackQuery):
 async def back_from_settings_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.answer("🔙 Возвращаемся в главное меню...", reply_markup=main_menu_keyboard)
+
+

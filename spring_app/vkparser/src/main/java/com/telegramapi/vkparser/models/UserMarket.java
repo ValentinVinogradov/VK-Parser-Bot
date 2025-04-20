@@ -6,19 +6,20 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "user_markets")
-public class UserMarkets {
+public class UserMarket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "tg_user_id")
     private Long tgUserId;
 
+    @Column(name = "vk_user_id")
     private Long vkUserId;
 
-    private Long groupId;
-
-    private String groupName;
+    @ManyToOne
+    private VkMarket vkMarket;
 
 
     public UUID getId() {
@@ -45,19 +46,12 @@ public class UserMarkets {
         this.vkUserId = vkUserId;
     }
 
-    public Long getGroupId() {
-        return groupId;
+
+    public VkMarket getVkMarket() {
+        return vkMarket;
     }
 
-    public void setGroupId(Long groupId) {
-        this.groupId = groupId;
-    }
-
-    public String getGroupName() {
-        return groupName;
-    }
-
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
+    public void setVkMarket(VkMarket vkMarket) {
+        this.vkMarket = vkMarket;
     }
 }

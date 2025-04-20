@@ -1,6 +1,6 @@
 package com.telegramapi.vkparser.dto;
 
-public class VkGroupDTO {
+public class VkMarketDTO {
     private Long id;
     private String name;
 
