@@ -1,5 +1,6 @@
 services:
   parser:
+    container_name: vkparser
     image: spring-parser:latest
     build:
       context: ./spring_app/vkparser
@@ -8,28 +9,35 @@ services:
       db:
         condition: service_healthy
       #redis todo
-    ports:
-      - '${APP_PORT}:${APP_PORT}'
+    # ports:
+    #   - '${PARSER_PORT}:${PARSER_PORT}'
     env_file:
       - .env
     networks:
       - mynetwork
 
   tg-bot:
+    container_name: tg-bot
     image: tg-bot:latest
     build:
       context: ./python_app/vkparser
       dockerfile: Dockerfile
     depends_on:
-      - parser
+      parser:
+        condition: service_started
+    # ports:
+    #   - '${TG_BOT_PORT}:${TG_BOT_PORT}'
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1
     networks:
       - mynetwork
   db:
+    container_name: postgres
     image: postgres:16
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_USER}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -39,6 +47,25 @@ services:
       - '${DB_PORT}:${DB_PORT}'
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    ports:
+      - '${NGINX_PORT}:${NGINX_PORT}'
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template
+    env_file:
+      - .env
+    depends_on:
+      parser:
+        condition: service_started
+      tg-bot:
+        condition: service_started
+      db:
+        condition: service_healthy
     networks:
       - mynetwork
   # redis:

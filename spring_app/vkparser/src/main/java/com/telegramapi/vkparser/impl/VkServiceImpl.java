@@ -3,6 +3,7 @@ package com.telegramapi.vkparser.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
+import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.services.VkService;
@@ -27,16 +28,12 @@ public class VkServiceImpl implements VkService {
     private final String TOKEN_URL = System.getenv("VK_TOKEN_URL");
     private final String VK_API_VERSION = System.getenv("VK_API_VERSION");
     private final WebClient vkWebClient;
-
-    private final VkMarketServiceImpl vkMarketService;
-    private final BlockingServiceImpl blockingServiceImpl;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
 
-    public VkServiceImpl(WebClient vkWebClient,
-                         VkMarketServiceImpl vkMarketService, BlockingServiceImpl blockingServiceImpl) {
+
+    public VkServiceImpl(WebClient vkWebClient) {
         this.vkWebClient = vkWebClient;
-        this.vkMarketService = vkMarketService;
-        this.blockingServiceImpl = blockingServiceImpl;
     }
 
     public Mono<VkTokenResponseDTO> getUserTokens(String code, String state, String deviceId) {
@@ -63,7 +60,7 @@ public class VkServiceImpl implements VkService {
                 .doOnSuccess((ignored) -> System.out.println("User tokens received successfully!"));
     }
 
-    public Mono<List<UserMarket>> getUserMarkets(Long tgUserId, Long vkUserId, String accessToken) {
+    public Mono<List<VkMarket>> getUserMarkets(Long tgUserId, Long vkUserId, String accessToken) {
         return vkWebClient
             .get()
             .uri(uriBuilder -> uriBuilder
@@ -81,46 +78,43 @@ public class VkServiceImpl implements VkService {
             .doOnSuccess(resp -> System.out.println("Successful market response!"))
             .doOnError(e -> System.out.println("Error after response: " + e))
             .doOnSuccess(response -> System.out.println("Successfully received VK response!"))
-            .flatMap(response -> {
-                JsonNode itemsNode = response.path("response").path("items");
-                System.out.println("Found " + itemsNode.size() + " VK groups!");
+                .flatMap(response -> {
+                    JsonNode itemsNode = response.path("response").path("items");
+                    System.out.println("Found " + itemsNode.size() + " VK groups!");
 
-                return Flux.fromIterable(itemsNode)
-                    .flatMap(item -> {
-                        Long vkMarketId = item.path("id").asLong();
-                        String vkMarketName = item.path("name").asText();
-                        System.out.println("Processing market: " + vkMarketId + " - " + vkMarketName + "...");
-
-                        UserMarket userMarket = new UserMarket();
-
-                        return blockingServiceImpl.fromBlocking(() ->
-                                        vkMarketService.existsByVkId(vkMarketId))
-                            .flatMap(exists -> {
-                                if (!exists) {
-                                    System.out
-                                            .println("Creating new market: "
-                                                    + vkMarketId + " - " + vkMarketName + "...");
-                                    VkMarket vkMarket = vkMarketService.createVkMarket(vkMarketId, vkMarketName);
-                                    return blockingServiceImpl.fromBlocking(() ->
-                                                    vkMarketService.saveVkMarket(vkMarket))
-                                        .doOnNext(saved -> System.out.println("Saved new market: " + saved));
-                                } else {
-                                    return blockingServiceImpl.fromBlocking(() ->
-                                                    vkMarketService.getMarketById(vkMarketId))
-                                        .doOnNext(existing -> System.out
-                                                .println("Fetched existing market: " + existing));
-                                }
+                    return Flux.fromIterable(itemsNode)
+                            .map(item -> {
+                                Long vkMarketId = item.path("id").asLong();
+                                String vkMarketName = item.path("name").asText();
+                                VkMarket vkMarket = new VkMarket();
+                                vkMarket.setMarketName(vkMarketName);
+                                vkMarket.setMarketVkId(vkMarketId);
+                                return vkMarket;
                             })
-                            .map(vkMarket -> {
-                                userMarket.setTgUserId(tgUserId);
-                                userMarket.setVkUserId(vkUserId);
-                                userMarket.setVkMarket(vkMarket);
-                                System.out.println("Created UserMarket entry: " + userMarket);
-                                return userMarket;
-                            });
-                    }).collectList()
-                    .doOnNext(userMarkets -> System.out.println("Total UserMarkets created: " + userMarkets.size()))
-                    .doOnTerminate(() -> System.out.println("User Markets fetching finished."));
-            });
+                            .collectList()
+                            .doOnTerminate(() -> System.out.println("Finished parsing VK groups."))
+                            .doOnSubscribe(s -> System.out.println("Started parsing VK groups..."))
+                            .doOnSuccess(s -> System.out.println("Parsing VK groups completed successfully!"))
+                            .doOnError(e -> System.out.println("Error after parsing VK groups: " + e.getMessage()));
+                });
+    }
+
+    //todo добавить path response
+    public Mono<VkUserInfoDTO> getUserProfileInfo(String accessToken) {
+        return vkWebClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/method/account.getProfileInfo")
+                        .queryParam("access_token", accessToken)
+                        .queryParam("v", VK_API_VERSION)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .map(json -> json.get("response")) // <-- заходим в "response"
+                .map(responseNode -> objectMapper.convertValue(responseNode, VkUserInfoDTO.class))
+                .doOnSubscribe(subscription -> System.out.println("Fetching VK user profile info..."))
+                .doOnError(error -> System.err.println("Error fetching VK user profile info: " + error.getMessage()))
+                .doOnSuccess(vkUserInfoDTO ->
+                        System.out.println("Successfully fetched VK user profile info! " + vkUserInfoDTO.getScreenName()));
     }
 }

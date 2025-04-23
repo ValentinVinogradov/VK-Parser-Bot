@@ -20,8 +20,12 @@ public class UserMarketServiceImpl implements UserMarketService {
         userMarketRepository.saveAll(userMarkets);
     }
 
+    public void saveUserMarket(UserMarket userMarket) {
+        userMarketRepository.save(userMarket);
+    }
+
     @Override
     public List<UserMarket> getAllUserMarkets(Long vkUserId) {
-        return List.of();
+        return userMarketRepository.findAllByVkUserId(vkUserId);
     }
 }

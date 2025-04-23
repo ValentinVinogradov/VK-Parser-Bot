@@ -15,18 +15,62 @@ public class VkAccount {
     @Column(name = "vk_user_id")
     private Long vkUserId;
 
+    private String firstName;
+
+    private String lastName;
+
+    private String userName;
+
+
+    //todo можно вынести а можно и не выносить
     @Column(columnDefinition = "TEXT")
     private String accessToken;
 
     @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
+    @Column(columnDefinition = "TEXT")
+    private String idToken;
+
     private LocalDateTime expiresAt;
+
+    private Boolean isActive = false;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getIdToken() {
+        return idToken;
+    }
+
+    public void setIdToken(String idToken) {
+        this.idToken = idToken;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
 
     public UUID getId() {
         return id;
@@ -74,5 +118,13 @@ public class VkAccount {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
     }
 }

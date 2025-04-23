@@ -13,5 +13,5 @@ public interface UserService {
     Mono<Void> syncUserMarkets(Long tgUserId, Long vkUserId, String accessToken);
     Boolean existsUserByTgId(Long tgUserId);
     User createUser(Long tgUserId);
-    User saveUser(User user);
+    void saveUser(User user);
 }

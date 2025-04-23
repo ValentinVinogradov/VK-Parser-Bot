@@ -1,6 +1,7 @@
 package com.telegramapi.vkparser.controllers;
 
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
+import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
 
 
 @RestController
@@ -23,18 +23,21 @@ public class LoginController {
     }
 
     @GetMapping("/callback")
-    public Mono<ResponseEntity<String>> handleVkAccountAuth(
+    public Mono<ResponseEntity<VkUserInfoDTO>> handleVkAccountAuth(
             @RequestParam String code,
             @RequestParam String state,
             @RequestParam(name = "device_id") String deviceId,
             @RequestParam(name = "tg_id") Long tgUserId) {
 
         return loginService.handleVkAccountAuth(tgUserId, code, state, deviceId)
-                .thenReturn(ResponseEntity.ok("Successfully worked controller!"))
+                .doOnSuccess(vkUserInfoDTO -> System.out.println("Successfully handled VK account auth!")) // Логирование успешного выполнения
+                .map(ResponseEntity::ok)
                 .onErrorResume(e -> {
-                    // Можно залоггировать ошибку
+                    // Логирование ошибки
                     e.printStackTrace();
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                    // Возвращаем строку с ошибкой в случае исключения
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(null));
                 });
     }
 }
