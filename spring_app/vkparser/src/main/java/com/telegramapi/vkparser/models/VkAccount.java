@@ -19,10 +19,10 @@ public class VkAccount {
 
     private String lastName;
 
-    private String userName;
+    @Column(name = "screen_name")
+    private String screenName;
 
-
-    //todo можно вынести а можно и не выносить
+    //todo можно вынести а можно и не выносить (я про токены)
     @Column(columnDefinition = "TEXT")
     private String accessToken;
 
@@ -34,18 +34,20 @@ public class VkAccount {
 
     private LocalDateTime expiresAt;
 
-    private Boolean isActive = false;
+    //todo прописать setActive место хардкода
+    private Boolean isActive = true;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public String getUserName() {
-        return userName;
+
+    public String getScreenName() {
+        return screenName;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setScreenName(String screenName) {
+        this.screenName = screenName;
     }
 
     public String getIdToken() {

@@ -12,11 +12,18 @@ public class UserMarket {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "tg_user_id")
-    private Long tgUserId;
+    @ManyToOne
+    @JoinColumn(name = "vk_account_id", nullable = false)
+    private VkAccount vkAccount;
 
-    @Column(name = "vk_user_id")
-    private Long vkUserId;
+//    @Column(name = "tg_user_id")
+//    private Long tgUserId;
+//
+//    @Column(name = "vk_user_id")
+//    private Long vkUserId;
+
+    @Column(name = "is_active")
+    private Boolean isActive = false;
 
     @ManyToOne
     private VkMarket vkMarket;
@@ -30,28 +37,27 @@ public class UserMarket {
         this.id = id;
     }
 
-    public Long getTgUserId() {
-        return tgUserId;
-    }
-
-    public void setTgUserId(Long tgUserId) {
-        this.tgUserId = tgUserId;
-    }
-
-    public Long getVkUserId() {
-        return vkUserId;
-    }
-
-    public void setVkUserId(Long vkUserId) {
-        this.vkUserId = vkUserId;
-    }
-
-
     public VkMarket getVkMarket() {
         return vkMarket;
     }
 
     public void setVkMarket(VkMarket vkMarket) {
         this.vkMarket = vkMarket;
+    }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
+    }
+
+    public VkAccount getVkAccount() {
+        return vkAccount;
+    }
+
+    public void setVkAccount(VkAccount vkAccount) {
+        this.vkAccount = vkAccount;
     }
 }

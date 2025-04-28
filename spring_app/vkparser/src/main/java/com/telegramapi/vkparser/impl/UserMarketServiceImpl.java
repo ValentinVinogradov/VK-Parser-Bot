@@ -1,6 +1,8 @@
 package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.models.UserMarket;
+import com.telegramapi.vkparser.models.VkAccount;
+import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.repositories.UserMarketRepository;
 import com.telegramapi.vkparser.services.UserMarketService;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,13 @@ public class UserMarketServiceImpl implements UserMarketService {
         this.userMarketRepository = userMarketRepository;
     }
 
+    public UserMarket createUserMarket(VkAccount vkAccount, VkMarket vkMarket) {
+        UserMarket userMarket = new UserMarket();
+        userMarket.setVkAccount(vkAccount);
+        userMarket.setVkMarket(vkMarket);
+        return userMarket;
+    }
+
     public void saveAllUserMarkets(List<UserMarket> userMarkets) {
         userMarketRepository.saveAll(userMarkets);
     }
@@ -25,7 +34,17 @@ public class UserMarketServiceImpl implements UserMarketService {
     }
 
     @Override
-    public List<UserMarket> getAllUserMarkets(Long vkUserId) {
-        return userMarketRepository.findAllByVkUserId(vkUserId);
+    public List<UserMarket> getAllUserMarkets(VkAccount vkAccount) {
+        return userMarketRepository.findAllByVkAccount(vkAccount);
+    }
+
+    public UserMarket getUserMarketById(Long vkMarketId) {
+        return userMarketRepository.findById(vkMarketId)
+                .orElse(null);
+    }
+
+    public UserMarket getActiveUserMarket(VkAccount vkAccount) {
+        return userMarketRepository.findByVkAccountAndIsActiveTrue(vkAccount)
+                .orElse(null);
     }
 }

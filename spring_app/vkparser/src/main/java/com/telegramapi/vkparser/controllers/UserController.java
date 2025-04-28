@@ -1,6 +1,8 @@
 package com.telegramapi.vkparser.controllers;
 
+import com.telegramapi.vkparser.dto.FullUserInfoDTO;
 import com.telegramapi.vkparser.impl.UserServiceImpl;
+import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkMarket;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,46 @@ public class UserController {
 
     public UserController(UserServiceImpl userService) {
         this.userService = userService;
+    }
+
+    @GetMapping("/info")
+    public ResponseEntity<FullUserInfoDTO> getFullUserInfo(@RequestParam(name = "tg_id") Long tgUserId) {
+        try {
+            return ResponseEntity.ok(userService.getFullUserInfo(tgUserId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/create-user")
+    public ResponseEntity<String> createUser(@RequestParam(name = "tg_id") Long tgUserId) {
+        try {
+            if (!userService.existsUserByTgId(tgUserId)) {
+                User user = userService.createUser(tgUserId);
+                userService.saveUser(user);
+            }
+            return ResponseEntity.ok("Successfully created user!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error to create user");
+        }
+    }
+
+    @GetMapping("/check-login")
+    public ResponseEntity<Boolean> checkUserLogin(@RequestParam(name = "tg_id") Long tgUserId) {
+        try {
+            return ResponseEntity.ok(userService.checkUserLogin(tgUserId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/check-active-market")
+    public ResponseEntity<Boolean> checkUserActiveMarket(@RequestParam(name = "tg_id") Long tgUserId) {
+        try {
+            return ResponseEntity.ok(userService.checkUserActiveMarket(tgUserId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     @GetMapping("/groups/all")

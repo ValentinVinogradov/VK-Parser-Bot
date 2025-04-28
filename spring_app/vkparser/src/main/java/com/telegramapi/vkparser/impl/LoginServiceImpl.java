@@ -3,11 +3,13 @@ package com.telegramapi.vkparser.impl;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkAccount;
+import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.services.LoginService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class LoginServiceImpl implements LoginService {
@@ -59,27 +61,46 @@ public class LoginServiceImpl implements LoginService {
                             String refreshToken = vkTokenResponseDTO.getRefreshToken();
                             String idToken = vkTokenResponseDTO.getIdToken();
 
-                            // Параллельно выполняем запросы
                             Mono<VkUserInfoDTO> vkUserInfoMono = vkService.getUserProfileInfo(accessToken);
 
-                            Mono<Void> syncMarketsMono = userService
-                                    .syncUserMarkets(user.getTgUserId(), vkUserId, accessToken);
+                            Mono<List<VkMarket>> vkMarketsMono = vkService.getUserMarkets(vkUserId, accessToken);
 
-                            // После выполнения запросов
-                            return Mono.when(syncMarketsMono, vkUserInfoMono)
-                                    .then(vkUserInfoMono)
-                                    .flatMap(vkUserInfoDTO -> {
+                            return Mono.zip(vkUserInfoMono, vkMarketsMono)
+                                    .flatMap(tuple -> {
+                                        VkUserInfoDTO vkUserInfoDTO = tuple.getT1();
+                                        List<VkMarket> vkMarkets = tuple.getT2();
+
                                         VkAccount vkAccount = vkAccountService.createVkAccount(
                                                 vkUserId, accessToken, refreshToken, idToken, expiresAt, user
                                         );
                                         vkAccount.setFirstName(vkUserInfoDTO.getFirstName());
                                         vkAccount.setLastName(vkUserInfoDTO.getLastName());
-                                        vkAccount.setUserName(vkUserInfoDTO.getScreenName());
+                                        vkAccount.setScreenName(vkUserInfoDTO.getScreenName());
 
                                         return blockingService.runBlocking(() -> vkAccountService.saveVkAccount(vkAccount))
+                                                .then(userService.syncUserMarkets(vkAccount, vkMarkets))
                                                 .then(tgBotService.notifyAuthorizationSuccess(tgUserId, vkUserInfoDTO))
                                                 .thenReturn(vkUserInfoDTO);
                                     });
+
+//                            Mono<Void> syncMarketsMono = userService
+//                                    .syncUserMarkets(user.getTgUserId(), vkUserId, accessToken);
+
+                            // После выполнения запросов
+//                            return Mono.when(syncMarketsMono, vkUserInfoMono)
+//                                    .then(vkUserInfoMono)
+//                                    .flatMap(vkUserInfoDTO -> {
+//                                        VkAccount vkAccount = vkAccountService.createVkAccount(
+//                                                vkUserId, accessToken, refreshToken, idToken, expiresAt, user
+//                                        );
+//                                        vkAccount.setFirstName(vkUserInfoDTO.getFirstName());
+//                                        vkAccount.setLastName(vkUserInfoDTO.getLastName());
+//                                        vkAccount.setScreenName(vkUserInfoDTO.getScreenName());
+//
+//                                        return blockingService.runBlocking(() -> vkAccountService.saveVkAccount(vkAccount))
+//                                                .then(tgBotService.notifyAuthorizationSuccess(tgUserId, vkUserInfoDTO))
+//                                                .thenReturn(vkUserInfoDTO);
+//                                    });
                         })
                 .doOnSubscribe(sub -> System.out.println("Handling vk auth callback started..."))
                 .doOnSuccess(sub -> System.out.println("Handling vk auth callback completed successfully!"))

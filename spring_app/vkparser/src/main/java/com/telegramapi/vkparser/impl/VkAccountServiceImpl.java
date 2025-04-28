@@ -52,7 +52,7 @@ public class VkAccountServiceImpl implements VkAccountService {
 
     public VkAccount getActiveAccount(User user) {
         return vkAccountRepository.findByUserAndIsActiveTrue(user)
-                .orElseThrow(() -> new EntityNotFoundException("Active vk account not found!"));
+                .orElse(null);
     }
 
 
@@ -61,5 +61,13 @@ public class VkAccountServiceImpl implements VkAccountService {
         VkAccount vkAccount = getVkAccountById(vkAccountId);
         vkAccount.setActive(true);
         vkAccountRepository.save(vkAccount);
+    }
+
+    public List<VkAccount> getAllUserVkAccounts(User user) {
+        return vkAccountRepository.findAllByUser(user);
+    }
+
+    public Boolean existsVkAccountByUser(User user) {
+        return vkAccountRepository.existsByUser(user);
     }
 }

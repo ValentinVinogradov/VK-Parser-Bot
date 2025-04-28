@@ -4,18 +4,17 @@ from urllib.parse import urlencode, quote
 from os import getenv
 
 
+def main_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🛍 Просмотр товаров")],
+            [KeyboardButton(text="👤 Профиль")]
+        ],
+        resize_keyboard=True
+    )
 
-# Главное меню (reply-кнопки)
-main_menu_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="🛍 Просмотр товаров")],
-        [KeyboardButton(text="⚙️ Настройки")]
-    ],
-    resize_keyboard=True
-)
-
-# Меню настроек (inline-кнопки)
-def settings_menu_keyboard(tg_id: int) -> InlineKeyboardMarkup:
+def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
+    
     vk_auth_url = getenv("VK_AUTH_URL")
     
     params = {
@@ -30,22 +29,29 @@ def settings_menu_keyboard(tg_id: int) -> InlineKeyboardMarkup:
     
     url = "?".join([vk_auth_url, urlencode(params, quote_via=quote, safe="?=")])
     
-    settings_menu_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="🔗 Войти через VK", callback_data="login_vk", url=url)],
-        [InlineKeyboardButton(text="🔁 Сменить VK аккаунт", callback_data="switch_vk_account")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="back_from_settings")]
-    ])
-
-    return settings_menu_keyboard
-
-product_menu_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="🛍 Товар «name»", callback_data="view_product")],
-        [
-            InlineKeyboardButton(text="⬅️ Назад", callback_data="prev_product"),
-            InlineKeyboardButton(text="➡️ Далее", callback_data="next_product")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔗 Войти через VK", url=url)]
         ]
-    ]
-)
+    )
+
+def profile_menu_keyboard(tg_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔧 Настроить VK аккаунт", callback_data="configure_vk_account")],
+            [InlineKeyboardButton(text="🏬 Выбрать магазин", callback_data="choose_market")]
+        ]
+    )
+
+
+def product_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍 Товар «name»", callback_data="view_product")],
+            [
+                InlineKeyboardButton(text="⬅️ Назад", callback_data="prev_product"),
+                InlineKeyboardButton(text="➡️ Далее", callback_data="next_product")
+            ]
+        ]
+    )
 

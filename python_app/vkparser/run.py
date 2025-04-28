@@ -1,7 +1,8 @@
 from aiogram import Bot, Dispatcher
 from aiohttp import web
-from handlers.handlers import router  
-from webhooks import vk_auth  # Import the vk_auth module
+from handlers.main_menu_handler import main_menu_router
+from handlers.start_handler import start_router
+from api_requests import vk_auth  # Import the vk_auth module
 from http_server import create_app  # Import the create_app function from http_server
 import asyncio
 from os import getenv
@@ -17,7 +18,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # Register the router with the dispatcher
-dp.include_router(router)
+dp.include_routers(main_menu_router, start_router)
 
 # Main function to start polling
 async def main():

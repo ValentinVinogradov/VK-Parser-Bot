@@ -29,7 +29,6 @@ public class TgBotServiceImpl implements TgBotService {
         // Отправляем POST запрос на питоновский сервер
         return vkWebClient
                 .post()
-                //todo проверить с портом или без работает
                 .uri(TG_BOT_CONTAINER_URL + "/vk/user_info")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)

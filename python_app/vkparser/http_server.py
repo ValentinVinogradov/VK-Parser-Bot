@@ -1,5 +1,5 @@
 from aiohttp import web
-from webhooks.vk_auth import handle_vk_auth
+from api_requests.vk_auth import handle_vk_auth
 
 def create_app():
     app = web.Application()

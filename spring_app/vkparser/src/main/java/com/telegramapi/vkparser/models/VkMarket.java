@@ -18,6 +18,9 @@ public class VkMarket {
     @Column(name = "market_vk_id")
     private Long marketVkId;
 
+    @Column(name = "market_url")
+    private String marketUrl;
+
     public UUID getId() {
         return id;
     }
@@ -40,5 +43,13 @@ public class VkMarket {
 
     public void setMarketVkId(Long marketVkId) {
         this.marketVkId = marketVkId;
+    }
+
+    public String getMarketUrl() {
+        return marketUrl;
+    }
+
+    public void setMarketUrl(String marketUrl) {
+        this.marketUrl = marketUrl;
     }
 }

@@ -14,9 +14,6 @@ async def handle_vk_auth(request: web.Request):
         user_info = data["user_info"]
         print("User info:", user_info)  # Debugging line to check user_info
         
-        
-        
-
         msg = f"✅ Вы вошли как {user_info.get("first_name")} " \
             + f"{user_info.get("last_name")}" +"!"
 

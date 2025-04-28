@@ -1,18 +1,22 @@
 package com.telegramapi.vkparser.models;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "products")
-public class Product {
+public class VkProduct {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private Long id;
+    private UUID id;
 
     private Long vkProductId;
 
+    @ManyToOne
     @JoinColumn(name = "vk_market_id", nullable = false)
     private VkMarket vkMarket;
 
@@ -25,13 +29,12 @@ public class Product {
     private String description;
 
     @Column(nullable = false)
-    private BigDecimal price;
+    private String price;
 
     private Integer availability;
 
-    //todo фотки
-    @Column(name = "photo_url", columnDefinition = "TEXT")
-    private String photoUrl;
+    @Column(name = "photo_urls", columnDefinition = "TEXT[]")
+    private List<String> photoUrls;
 
     @Column(name = "stock_quantity")
     private Integer stockQuantity; // например: "available", "deleted"
@@ -48,16 +51,19 @@ public class Product {
     @Column(name = "reviews_count")
     private Integer reviewsCount;
 
+    @Column(name = "views_count")
+    private Integer viewsCount;
+
     @Column(name = "created_at")
-    private Long createdAt; // timestamp VK-шный
+    private Instant createdAt; // timestamp VK-шный
 
     // геттеры и сеттеры
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -85,20 +91,20 @@ public class Product {
         this.description = description;
     }
 
-    public BigDecimal getPrice() {
+    public String getPrice() {
         return price;
     }
 
-    public void setPrice(BigDecimal price) {
+    public void setPrice(String price) {
         this.price = price;
     }
 
-    public String getPhotoUrl() {
-        return photoUrl;
+    public List<String> getPhotoUrls() {
+        return photoUrls;
     }
 
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
+    public void setPhotoUrls(List<String> photoUrls) {
+        this.photoUrls = photoUrls;
     }
 
     public Integer getAvailability() {
@@ -109,12 +115,76 @@ public class Product {
         this.availability = availability;
     }
 
-    public Long getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Long createdAt) {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getVkProductId() {
+        return vkProductId;
+    }
+
+    public void setVkProductId(Long vkProductId) {
+        this.vkProductId = vkProductId;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Integer getStockQuantity() {
+        return stockQuantity;
+    }
+
+    public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
+
+    public Integer getLikesCount() {
+        return likesCount;
+    }
+
+    public void setLikesCount(Integer likesCount) {
+        this.likesCount = likesCount;
+    }
+
+    public Integer getRepostCount() {
+        return repostCount;
+    }
+
+    public void setRepostCount(Integer repostCount) {
+        this.repostCount = repostCount;
+    }
+
+    public Double getRating() {
+        return rating;
+    }
+
+    public void setRating(Double rating) {
+        this.rating = rating;
+    }
+
+    public Integer getReviewsCount() {
+        return reviewsCount;
+    }
+
+    public void setReviewsCount(Integer reviewsCount) {
+        this.reviewsCount = reviewsCount;
+    }
+
+    public Integer getViewsCount() {
+        return viewsCount;
+    }
+
+    public void setViewsCount(Integer viewsCount) {
+        this.viewsCount = viewsCount;
     }
 }
 

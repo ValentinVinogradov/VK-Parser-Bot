@@ -1,14 +1,17 @@
 package com.telegramapi.vkparser.dto;
 
-public class VkMarketDTO {
-    private Long id;
-    private String name;
+import java.util.UUID;
 
-    public Long getId() {
+public class VkMarketDTO {
+    private UUID id;
+    private String name;
+    private boolean isActive;
+
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -18,5 +21,13 @@ public class VkMarketDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 }

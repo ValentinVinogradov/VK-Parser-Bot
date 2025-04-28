@@ -23,14 +23,15 @@ public class VkMarketServiceImpl implements VkMarketService {
         return vkMarketRepository.getByMarketVkId(vkMarketId);
     }
 
-    public VkMarket createVkMarket(Long vkMarketId, String vkMarketName) {
+    public VkMarket createVkMarket(Long vkMarketId, String vkMarketName, String vkMarketUrl) {
         VkMarket vkMarket = new VkMarket();
         vkMarket.setMarketName(vkMarketName);
         vkMarket.setMarketVkId(vkMarketId);
+        vkMarket.setMarketUrl(vkMarketUrl);
         return vkMarket;
     }
 
-    public VkMarket saveVkMarket(VkMarket vkMarket) {
-        return vkMarketRepository.save(vkMarket);
+    public void saveVkMarket(VkMarket vkMarket) {
+        vkMarketRepository.save(vkMarket);
     }
 }

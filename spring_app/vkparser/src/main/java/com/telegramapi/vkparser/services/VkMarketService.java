@@ -5,6 +5,6 @@ import com.telegramapi.vkparser.models.VkMarket;
 public interface VkMarketService {
     Boolean existsByVkId(Long vkMarketId);
     VkMarket getMarketById(Long vkMarketId);
-    VkMarket createVkMarket(Long vkMarketId, String vkMarketName);
-    VkMarket saveVkMarket(VkMarket vkMarket);
+    VkMarket createVkMarket(Long vkMarketId, String vkMarketName, String vkMarketUrl);
+    void saveVkMarket(VkMarket vkMarket);
 }

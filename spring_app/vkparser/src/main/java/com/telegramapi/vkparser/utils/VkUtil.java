@@ -1,4 +1,5 @@
 package com.telegramapi.vkparser.utils;
 
-public class UnpackAvailabilityEnum {
+public class VkUtil {
+
 }
