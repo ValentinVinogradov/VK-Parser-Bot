@@ -1,6 +1,5 @@
 package com.telegramapi.vkparser.controllers;
 
-import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import org.springframework.http.*;

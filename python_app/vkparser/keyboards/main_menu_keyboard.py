@@ -35,23 +35,3 @@ def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
         ]
     )
 
-def profile_menu_keyboard(tg_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔧 Настроить VK аккаунт", callback_data="configure_vk_account")],
-            [InlineKeyboardButton(text="🏬 Выбрать магазин", callback_data="choose_market")]
-        ]
-    )
-
-
-def product_menu_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🛍 Товар «name»", callback_data="view_product")],
-            [
-                InlineKeyboardButton(text="⬅️ Назад", callback_data="prev_product"),
-                InlineKeyboardButton(text="➡️ Далее", callback_data="next_product")
-            ]
-        ]
-    )
-

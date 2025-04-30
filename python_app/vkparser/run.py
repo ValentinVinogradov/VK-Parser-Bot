@@ -1,44 +1,47 @@
 from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.redis import RedisStorage
 from aiohttp import web
 from handlers.main_menu_handler import main_menu_router
 from handlers.start_handler import start_router
-from api_requests import vk_auth  # Import the vk_auth module
-from http_server import create_app  # Import the create_app function from http_server
+from handlers.market_handler import market_router
+from api_responses import vk_auth
+from http_server import create_app
 import asyncio
 from os import getenv
+from logging import basicConfig, INFO
 
 
-# Replace 'YOUR_BOT_TOKEN' with your actual bot token
 BOT_TOKEN = getenv('BOT_TOKEN')
 if BOT_TOKEN is None:
     raise ValueError("No BOT_TOKEN found in environment variables.")
 
-# Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+redis_url = getenv('REDIS_URL')
+if redis_url is None:
+    raise ValueError("No REDIS_URL found in environment variables.")
 
-# Register the router with the dispatcher
-dp.include_routers(main_menu_router, start_router)
+storage = RedisStorage.from_url(redis_url, state_ttl=getenv("TTL"), data_ttl=getenv("TTL"))
+dp = Dispatcher(storage=storage)
 
-# Main function to start polling
+dp.include_routers(main_menu_router, start_router, market_router)
+
 async def main():
-    vk_auth_app = create_app()  # Create the aiohttp web application
+    vk_auth_app = create_app() 
     
-    vk_auth.bot = bot  # Set the bot instance in the vk_auth module
+    vk_auth.bot = bot 
     
     runner = web.AppRunner(vk_auth_app)
     await runner.setup()
     
-    print("PORT:", getenv('TG_BOT_PORT'))
-    
     site = web.TCPSite(runner, '0.0.0.0', int(getenv('TG_BOT_PORT')))
     
     await site.start()
-    print("HTTP server is running on http://localhost:9090")
+    print("HTTP server is running on http://tg-bot:9090")
     
     
     print("Bot is starting...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    basicConfig(level=INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     asyncio.run(main())

@@ -2,7 +2,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 from typing import Callable, Awaitable, Dict, Any
 from api_requests.user_requests import check_login, check_active_market
-from keyboards.keyboards import vk_login_button
+from keyboards.main_menu_keyboard import vk_login_button
 
 class MainMenuMiddleware(BaseMiddleware):
     async def __call__(

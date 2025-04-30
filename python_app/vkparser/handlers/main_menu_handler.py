@@ -1,11 +1,14 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 from aiogram import F
-from keyboards.keyboards import profile_menu_keyboard, product_menu_keyboard
+from keyboards.profile_keyboard import profile_menu_keyboard
+from keyboards.product_keyboard import product_menu_keyboard
 from api_requests.user_requests import *
 from api_requests.product_requsts import get_products
 from middlewares.main_menu_middleware import MainMenuMiddleware
+from states.profile_states import ProfileState
 
 
 main_menu_router = Router()
@@ -13,18 +16,23 @@ main_menu_router.message.middleware(MainMenuMiddleware())
 
 
 @main_menu_router.message(F.text == "🛍 Просмотр товаров")
-async def view_products_handler(message: types.Message):
+async def view_products_handler(message: types.Message, state: FSMContext):
     print(await get_products(message.from_user.id))
     await message.answer("Здесь будут отображаться товары.", reply_markup=product_menu_keyboard())
 
 
 @main_menu_router.message(F.text == "👤 Профиль")
-async def settings_handler(message: types.Message):
+async def settings_handler(message: types.Message, state: FSMContext):
+    await state.set_state(ProfileState.profile)
+    
     data = await get_user_info(message.from_user.id)
-    print(data)
     vk_markets = data[1]
     
     vk_accounts = data[0]
+    
+    await state.update_data(vk_accounts=vk_accounts, vk_markets=vk_markets)
+    
+    
     if len(vk_accounts) < 2:
         vk_accounts_text = "👤 Ваш VK аккаунт:\n"
     else:
@@ -54,5 +62,5 @@ async def settings_handler(message: types.Message):
     
     await message.answer(
         "Ваш профиль:\n\n" + text + "Выберите действие:",
-        reply_markup=profile_menu_keyboard(message.from_user.id)
+        reply_markup=profile_menu_keyboard()
     )

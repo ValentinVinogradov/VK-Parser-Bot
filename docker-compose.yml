@@ -8,9 +8,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      #redis todo
-    # ports:
-    #   - '${PARSER_PORT}:${PARSER_PORT}'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:8080/health/ping || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     env_file:
       - .env
     networks:
@@ -24,9 +27,13 @@ services:
       dockerfile: Dockerfile
     depends_on:
       parser:
-        condition: service_started
-    # ports:
-    #   - '${TG_BOT_PORT}:${TG_BOT_PORT}'
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://parser:8080/health/ping || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
     env_file:
       - .env
     environment:
@@ -61,17 +68,27 @@ services:
       - .env
     depends_on:
       parser:
-        condition: service_started
+        condition: service_healthy
       tg-bot:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
     networks:
       - mynetwork
-  # redis:
-  #todo
+  redis:
+    container_name: redis
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+    env_file:
+      - .env
+    ports:
+      - '${REDIS_PORT}:${REDIS_PORT}'
+    networks:
+      - mynetwork
 volumes:
   db_data:
+  redis_data:
 
 networks:
   mynetwork:
