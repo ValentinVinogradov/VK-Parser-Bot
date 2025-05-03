@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -46,7 +47,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Mono<Void> syncUserMarkets(VkAccount vkAccount, List<VkMarket> vkMarkets) {
-
         return Flux.fromIterable(vkMarkets)
                 .flatMap(vkMarket ->
                     blockingService.runBlocking(() -> vkMarketService.saveVkMarket(vkMarket))
@@ -62,15 +62,15 @@ public class UserServiceImpl implements UserService {
                 .doOnSuccess(s -> System.out.println("User market synchronization completed successfully!"));
     }
 
-    public List<VkMarket> getUserMarkets(Long tgUserId) {
-        User user = getUserByTgId(tgUserId);
-        VkAccount activeVkAccount = vkAccountService.getActiveAccount(user);
-        List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeVkAccount);
-        return userMarkets
-                .stream()
-                .map(UserMarket::getVkMarket)
-                .toList();
-    }
+//    public List<VkMarket> getUserMarkets(Long tgUserId) {
+//        User user = getUserByTgId(tgUserId);
+//        VkAccount activeVkAccount = vkAccountService.getActiveAccount(user);
+//        List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeVkAccount);
+//        return userMarkets
+//                .stream()
+//                .map(UserMarket::getVkMarket)
+//                .toList();
+//    }
 
     //todo сделать как то рефреш аксесс токена
 
@@ -148,7 +148,11 @@ public class UserServiceImpl implements UserService {
 
     public Boolean checkUserActiveMarket(Long tgUserId) {
         User user = getUserByTgId(tgUserId);
-        VkAccount vkAccount = vkAccountService.getActiveAccount(user);
-        return userMarketService.getActiveUserMarket(vkAccount) != null;
+        UUID vkAccountId = vkAccountService.getActiveAccount(user).getId();
+        return userMarketService.getActiveUserMarket(vkAccountId) != null;
+    }
+
+    public void updateActiveMarket(UUID marketId, UUID vkAccountId) {
+        userMarketService.setActiveUserMarket(marketId, vkAccountId);
     }
 }

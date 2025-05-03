@@ -58,9 +58,7 @@ public class VkAccountServiceImpl implements VkAccountService {
 
     public void setActiveVkAccount(UUID vkAccountId, User user) {
         vkAccountRepository.deactivateVkAccount(user);
-        VkAccount vkAccount = getVkAccountById(vkAccountId);
-        vkAccount.setActive(true);
-        vkAccountRepository.save(vkAccount);
+        vkAccountRepository.activateVkAccount(vkAccountId);
     }
 
     public List<VkAccount> getAllUserVkAccounts(User user) {

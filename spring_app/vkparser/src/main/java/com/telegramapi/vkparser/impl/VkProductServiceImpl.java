@@ -84,7 +84,7 @@ public class VkProductServiceImpl {
            throw new IllegalStateException("Account must be active");
         }
         System.out.println("Нашли активный акк: " + activeVkAccount.getFirstName());
-        UserMarket activeUserMarket = userMarketService.getActiveUserMarket(activeVkAccount);
+        UserMarket activeUserMarket = userMarketService.getActiveUserMarket(activeVkAccount.getId());
         if (activeUserMarket == null) {
             throw new IllegalStateException("Market must be active");
         }

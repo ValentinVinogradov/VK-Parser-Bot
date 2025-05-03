@@ -20,7 +20,7 @@ async def view_products_handler(message: types.Message, state: FSMContext):
     print(await get_products(message.from_user.id))
     await message.answer("Здесь будут отображаться товары.", reply_markup=product_menu_keyboard())
 
-
+# TODO: добавить кеширование для получения информации о пользователе
 @main_menu_router.message(F.text == "👤 Профиль")
 async def settings_handler(message: types.Message, state: FSMContext):
     await state.set_state(ProfileState.profile)
@@ -31,6 +31,15 @@ async def settings_handler(message: types.Message, state: FSMContext):
     vk_accounts = data[0]
     
     await state.update_data(vk_accounts=vk_accounts, vk_markets=vk_markets)
+    
+    for market in vk_markets:
+        if market.get("active"):
+            print("активный магазин: ", market.get("id"))
+            print("активный магазин: ", market.get("name"))
+            await state.update_data(active_market_id=market.get("id"))
+    for account in vk_accounts:
+        if account.get("active"):
+            await state.update_data(active_vk_account_id=account.get("id"))
     
     
     if len(vk_accounts) < 2:

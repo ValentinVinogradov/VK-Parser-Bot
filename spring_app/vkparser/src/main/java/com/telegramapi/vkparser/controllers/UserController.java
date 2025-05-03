@@ -5,10 +5,9 @@ import com.telegramapi.vkparser.impl.UserServiceImpl;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkMarket;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 import java.util.List;
 
@@ -30,7 +29,7 @@ public class UserController {
         }
     }
 
-    @GetMapping("/create-user")
+    @PostMapping("/create-user")
     public ResponseEntity<String> createUser(@RequestParam(name = "tg_id") Long tgUserId) {
         try {
             if (!userService.existsUserByTgId(tgUserId)) {
@@ -60,16 +59,28 @@ public class UserController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+    //todo нахуя он подмать
+//    @GetMapping("/groups/all")
+//    public ResponseEntity<List<VkMarket>> getUserMarkets(@RequestParam Long tgUserId) {
+//        try {
+//            return ResponseEntity.ok(userService.getUserMarkets(tgUserId));
+//        } catch (Exception e) {
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
 
-    @GetMapping("/groups/all")
-    public ResponseEntity<List<VkMarket>> getUserMarkets(@RequestParam Long tgUserId) {
+    @PatchMapping("/update-active-market")
+    public ResponseEntity<String> updateActiveMarket(
+            @RequestParam(name = "account_id") UUID vkAccountId,
+            @RequestParam(name = "market_id") UUID marketId) {
         try {
-            return ResponseEntity.ok(userService.getUserMarkets(tgUserId));
+            System.out.println("1");
+            userService.updateActiveMarket(vkAccountId, marketId);
+            System.out.println("2");
+            return ResponseEntity.ok("Successfully updated active market!");
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().body("Error to update active market");
         }
     }
-
-
 
 }

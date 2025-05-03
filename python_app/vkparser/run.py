@@ -4,6 +4,7 @@ from aiohttp import web
 from handlers.main_menu_handler import main_menu_router
 from handlers.start_handler import start_router
 from handlers.market_handler import market_router
+from handlers.account_handler import account_router
 from api_responses import vk_auth
 from http_server import create_app
 import asyncio
@@ -23,7 +24,7 @@ if redis_url is None:
 storage = RedisStorage.from_url(redis_url, state_ttl=getenv("TTL"), data_ttl=getenv("TTL"))
 dp = Dispatcher(storage=storage)
 
-dp.include_routers(main_menu_router, start_router, market_router)
+dp.include_routers(main_menu_router, start_router, market_router, account_router)
 
 async def main():
     vk_auth_app = create_app() 

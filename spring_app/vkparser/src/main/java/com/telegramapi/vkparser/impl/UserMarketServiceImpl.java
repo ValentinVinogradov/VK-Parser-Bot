@@ -1,13 +1,16 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkAccount;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.repositories.UserMarketRepository;
 import com.telegramapi.vkparser.services.UserMarketService;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserMarketServiceImpl implements UserMarketService {
@@ -43,8 +46,14 @@ public class UserMarketServiceImpl implements UserMarketService {
                 .orElse(null);
     }
 
-    public UserMarket getActiveUserMarket(VkAccount vkAccount) {
-        return userMarketRepository.findByVkAccountAndIsActiveTrue(vkAccount)
+    public UserMarket getActiveUserMarket(UUID vkAccountId) {
+        return userMarketRepository.findByVkAccount_IdAndIsActiveTrue(vkAccountId)
                 .orElse(null);
+    }
+
+    @Transactional
+    public void setActiveUserMarket(UUID userMarketId, UUID vkAccountId) {
+        userMarketRepository.deactivateUserMarket(vkAccountId);
+        userMarketRepository.activateUserMarket(userMarketId);
     }
 }

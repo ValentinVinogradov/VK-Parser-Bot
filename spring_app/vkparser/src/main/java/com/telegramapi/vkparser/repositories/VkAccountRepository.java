@@ -18,6 +18,10 @@ public interface VkAccountRepository extends JpaRepository<VkAccount, UUID> {
     @Query("UPDATE VkAccount va SET va.isActive = false WHERE va.user = :user")
     void deactivateVkAccount(User user);
 
+    @Modifying
+    @Query("UPDATE VkAccount va SET va.isActive = true WHERE va.id = :vkAccountId")
+    void activateVkAccount(UUID vkAccountId);
+
     Optional<VkAccount> findByUserAndIsActiveTrue(User user);
 
     List<VkAccount> findAllByUser(User user);

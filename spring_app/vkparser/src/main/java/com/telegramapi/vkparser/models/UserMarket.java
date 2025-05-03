@@ -16,16 +16,11 @@ public class UserMarket {
     @JoinColumn(name = "vk_account_id", nullable = false)
     private VkAccount vkAccount;
 
-//    @Column(name = "tg_user_id")
-//    private Long tgUserId;
-//
-//    @Column(name = "vk_user_id")
-//    private Long vkUserId;
-
     @Column(name = "is_active")
     private Boolean isActive = false;
 
     @ManyToOne
+    @JoinColumn(name = "vk_market_id", nullable = false)
     private VkMarket vkMarket;
 
 
