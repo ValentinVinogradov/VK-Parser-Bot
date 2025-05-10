@@ -8,7 +8,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🛍 Просмотр товаров")],
-            [KeyboardButton(text="👤 Профиль")]
+            [KeyboardButton(text="👤 Профиль")],
         ],
         resize_keyboard=True
     )

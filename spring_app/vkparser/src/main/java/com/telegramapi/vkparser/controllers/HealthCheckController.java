@@ -12,4 +12,5 @@ public class HealthCheckController {
     public ResponseEntity<String> ping() {
         return ResponseEntity.ok("pong");
     }
+
 }

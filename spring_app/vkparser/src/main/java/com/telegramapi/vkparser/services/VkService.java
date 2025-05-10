@@ -1,7 +1,6 @@
 package com.telegramapi.vkparser.services;
 
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
-import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.models.VkProduct;
 import reactor.core.publisher.Mono;

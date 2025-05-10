@@ -1,14 +1,12 @@
 package com.telegramapi.vkparser.controllers;
 
 import com.telegramapi.vkparser.dto.VkProductDTO;
+import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.impl.VkProductServiceImpl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/products")
@@ -21,14 +19,40 @@ public class VkProductController {
     }
 
     //todo
-    @GetMapping("/all")
-    public ResponseEntity<List<VkProductDTO>> getAllProducts(@RequestParam(name = "tg_id") Long tgUserId) {
+    @GetMapping("/get-page")
+    public ResponseEntity<VkProductResponseDTO> getProducts(
+            @RequestParam(name = "tg_id") Long tgUserId,
+            @RequestParam(name = "count") int count,
+            @RequestParam(name = "page") int page) {
         try {
-            System.out.println("Контроллер товаров");
-            return ResponseEntity.ok(vkProductService.getAllVkProducts(tgUserId));
+            System.out.println("Кол-во: " + vkProductService.getVkProducts(tgUserId, count, page).count());
+            return ResponseEntity.ok(vkProductService.getVkProducts(tgUserId, count, page));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(List.of());
+            return ResponseEntity.badRequest().body(null);
         }
     }
+
+    @GetMapping("/get/{id}")
+    public ResponseEntity<VkProductDTO> getProduct(@PathVariable(name = "id") UUID vkProductId) {
+        try {
+            return ResponseEntity.ok(vkProductService.getVkProductById(vkProductId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+//    @GetMapping("/get-page")
+//    public ResponseEntity<VkProductResponseDTO> getAllProducts(
+//            @RequestParam(name = "tg_id") Long tgUserId,
+//            @RequestParam(name = "count") int count,
+//            @RequestParam(name = "page") int page) {
+//        try {
+//            System.out.println("Контроллер товаров");
+//            return ResponseEntity.ok(vkProductService.getVkProducts(tgUserId, count, page));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(null);
+//        }
+//    }
+
 }
 

@@ -52,7 +52,9 @@ public class UserMarketServiceImpl implements UserMarketService {
     }
 
     @Transactional
-    public void setActiveUserMarket(UUID userMarketId, UUID vkAccountId) {
+    public void setActiveUserMarket(UUID vkAccountId, UUID userMarketId) {
+        System.out.println("userMarketId: " + userMarketId);
+        System.out.println("vkAccountId: " + vkAccountId);
         userMarketRepository.deactivateUserMarket(vkAccountId);
         userMarketRepository.activateUserMarket(userMarketId);
     }

@@ -1,0 +1,11 @@
+FROM eclipse-temurin:23-jdk-alpine
+
+WORKDIR /app
+
+RUN apk add curl
+
+COPY ./build/libs/vkparser.jar vkparser.jar
+
+EXPOSE 8080
+
+CMD ["java", "-jar", "vkparser.jar"]

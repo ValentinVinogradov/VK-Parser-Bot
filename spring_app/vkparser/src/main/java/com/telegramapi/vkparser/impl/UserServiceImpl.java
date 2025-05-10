@@ -152,7 +152,7 @@ public class UserServiceImpl implements UserService {
         return userMarketService.getActiveUserMarket(vkAccountId) != null;
     }
 
-    public void updateActiveMarket(UUID marketId, UUID vkAccountId) {
-        userMarketService.setActiveUserMarket(marketId, vkAccountId);
+    public void updateActiveMarket(UUID vkAccountId, UUID userMarketId) {
+        userMarketService.setActiveUserMarket(vkAccountId, userMarketId);
     }
 }

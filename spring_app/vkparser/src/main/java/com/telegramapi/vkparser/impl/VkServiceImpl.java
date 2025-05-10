@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
-import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.models.VkProduct;
 import com.telegramapi.vkparser.services.VkService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -17,7 +15,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,8 +80,6 @@ public class VkServiceImpl implements VkService {
                     JsonNode itemsNode = response.path("response").path("items");
 
                     //todo подумать насчет количества
-                    int count = response.path("response").path("count").asInt();
-                    System.out.println("Found " + count + " VK products");
                     return Flux.fromIterable(itemsNode)
                             .map(item -> {
                                 long vkProductId = item.path("id").asLong();

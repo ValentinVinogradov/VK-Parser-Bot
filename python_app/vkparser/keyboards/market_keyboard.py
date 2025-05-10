@@ -12,5 +12,7 @@ async def market_menu_keyboard(markets: list[dict]) -> InlineKeyboardMarkup:
         callback_data = f"select_active_market:{market_id}"
 
         buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
+    
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_profile")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)

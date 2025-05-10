@@ -59,7 +59,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(null);
         }
     }
-    //todo нахуя он подмать
+    //todo нахуя он подумать
 //    @GetMapping("/groups/all")
 //    public ResponseEntity<List<VkMarket>> getUserMarkets(@RequestParam Long tgUserId) {
 //        try {

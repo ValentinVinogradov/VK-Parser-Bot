@@ -1,53 +1,64 @@
 # Makefile for Docker commands
-rebuild:
-	docker compose up --build -d
+COMPOSE_CMD = docker compose $(COMPOSE_FILES)
 
-orebuild:
-	docker compose build $(S)
-	docker compose up -d
+rebuild:
+	$(COMPOSE_CMD) build --no-cache
+	$(COMPOSE_CMD) up -d
+
+rebuild-c:
+	$(COMPOSE_CMD) up --build -d
+
+
+rebuild-o:
+	$(COMPOSE_CMD) build $(S) --no-cache
+	$(COMPOSE_CMD) up -d
+
+rebuild-o-c:
+	$(COMPOSE_CMD) build $(S) 
+	$(COMPOSE_CMD) up -d
 
 up:
-	docker compose up -d
+	$(COMPOSE_CMD) up -d
 
 oup:
-	docker compose up -d $(S)
+	$(COMPOSE_CMD) up -d $(S)
 
 stop:
-	docker compose stop
+	$(COMPOSE_CMD) stop
 
 ostop:
-	docker compose stop $(S)
+	$(COMPOSE_CMD) stop $(S)
 
 restart:
-	docker compose stop 
-	docker compose up -d 
+	$(COMPOSE_CMD) stop 
+	$(COMPOSE_CMD) up -d 
 
 down:
 	@echo "Removing Docker containers..."
-	docker compose down
+	$(COMPOSE_CMD) down
 	@echo "Docker containers removed."
 
 odown:
 	@echo "Removing container..."
-	docker compose down $(S)
+	$(COMPOSE_CMD) down $(S)
 	@echo "Docker container removed."
 
 exec:
-	docker compose exec -it $(S) bash
+	$(COMPOSE_CMD) exec -it $(S) bash
 
 logs:
-	docker compose logs -f $(S)
+	$(COMPOSE_CMD) logs -f $(S)
 
 status:
-	docker compose ps
+	$(COMPOSE_CMD) ps
 
 reset:
-	docker compose down -v 
-	docker compose up -d
+	$(COMPOSE_CMD) down -v 
+	$(COMPOSE_CMD) up -d
 
 clean:
 	@echo "Cleaning up containers, volumes, and dangling images..."
-	docker compose down --volumes --remove-orphans
+	$(COMPOSE_CMD) down --volumes --remove-orphans
 	docker volume prune -f
 	docker images -f "dangling=true" -q | xargs -r docker rmi
 	@echo "Containers, volumes, and dangling images cleaned."

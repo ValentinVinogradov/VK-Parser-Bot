@@ -1,0 +1,8 @@
+services:
+  parser:
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+
+  tg-bot:
+    volumes:
+      - ./python_app/vkparser:/app

@@ -50,6 +50,6 @@ async def update_active_market(active_vk_account_id, market_id):
     async with aiohttp.ClientSession() as session:
         async with session.patch(url) as response:
             if response.status == 200:
-                return await response.json()
+                return
             else:
                 return False

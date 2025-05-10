@@ -22,11 +22,8 @@ async def show_market_menu(callback: CallbackQuery, state: FSMContext):
     # Отправляем меню магазина
     await callback.message.answer("Выберите активный магазин:", reply_markup=await market_menu_keyboard(market_data))
 
-# @market_router.callback_query(F.data == "back_to_profile", ProfileState.choose_market)
 
 
-## TODO: добавить middleware для синхронизации с базой данных
-## TODO: разобраться почему не работает обновление активного магазина в базе данных и не меняется клаваиатура
 @market_router.callback_query(F.data.startswith("select_active_market:"), ProfileState.choose_market)
 async def select_active_market(callback: CallbackQuery, state: FSMContext):
     
@@ -50,11 +47,17 @@ async def select_active_market(callback: CallbackQuery, state: FSMContext):
     
     await state.update_data(vk_markets=market_data)
     
+    
     await callback.message.edit_reply_markup(reply_markup=await market_menu_keyboard(market_data))
     
     async def debounced_update():
         await update_active_market(active_vk_account_id, market_id)
     
-    print(debounced_update)
-    
     debounce_manager.debounce(callback.from_user.id, debounced_update)
+
+
+@market_router.callback_query(F.data == "back_to_profile", ProfileState.choose_market)
+async def back_to_profile(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(ProfileState.profile)
+    await callback.answer("")
+    await callback.message.delete()

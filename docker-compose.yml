@@ -4,7 +4,7 @@ services:
     image: spring-parser:latest
     build:
       context: ./spring_app/vkparser
-      dockerfile: Dockerfile
+      dockerfile: ${DOCKERFILE:-Dockerfile}
     depends_on:
       db:
         condition: service_healthy
@@ -16,6 +16,8 @@ services:
       start_period: 30s
     env_file:
       - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
     networks:
       - mynetwork
 
@@ -24,7 +26,7 @@ services:
     image: tg-bot:latest
     build:
       context: ./python_app/vkparser
-      dockerfile: Dockerfile
+      dockerfile: ${DOCKERFILE:-Dockerfile}
     depends_on:
       parser:
         condition: service_healthy

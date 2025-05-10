@@ -1,4 +1,18 @@
-docker-%:
-	make -f Docker.mk $*
+NEEDS_JAR_COMMANDS = rebuild rebuild-c rebuild-o rebuild-o-c up oup reset restart
 
-# etc
+build-jar:
+	cd spring_app/vkparser && ./gradlew bootJar --scan
+
+dev-%:
+	@if echo "$(filter $*, $(NEEDS_JAR_COMMANDS))" | grep -q . && \
+	[ "$(S)" = "" -o "$(S)" = "parser" ]; then \
+		$(MAKE) build-jar; \
+	fi
+	
+	$(MAKE) -f Docker.mk $* \
+	DOCKERFILE=Dockerfile.dev \
+	COMPOSE_FILES="-f docker-compose.yml -f docker-compose.override.yml"
+
+
+prod-%:
+	$(MAKE) -f Docker.mk $* DOCKERFILE=Dockerfile.prod COMPOSE_FILES="-f docker-compose.yml"
