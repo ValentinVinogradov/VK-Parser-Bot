@@ -14,11 +14,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+
+springdoc:
+  swagger-ui:
+    enabled: true
+
+    path: /api/v1/docs
+  api-docs:
+    enabled: true
+    path: /api/v1/docs/api-docs
 
 logging:
   level:
-    sql: DEBUG
+    sql: off

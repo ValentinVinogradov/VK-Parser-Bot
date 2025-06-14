@@ -33,7 +33,7 @@ async def show_pages(callback: CallbackQuery, state: FSMContext):
     if current_page == page:
         product = await get_product(product_list[str(first_index)])
         await state.update_data(current_index=first_index)
-        media = [InputMediaPhoto(media=url) for url in product['photoUrls']]
+        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         await callback.message.answer_media_group(media=media)
         
         await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(first_index, total_count))
@@ -52,7 +52,7 @@ async def show_pages(callback: CallbackQuery, state: FSMContext):
                                 current_index=first_index,
                                 current_page=page,
                                 current_set=None)
-        media = [InputMediaPhoto(media=url) for url in product['photoUrls']]
+        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         photo_text = format_product_caption_md(product, first_index)
         media[0].caption = photo_text
         media[0].parse_mode = "MarkdownV2"
@@ -99,7 +99,7 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
     )
     product = await get_product(product_list[str(new_index)])
 
-    media = [InputMediaPhoto(media=url) for url in product['photoUrls']]
+    media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
     media[0].caption = format_product_caption_md(product, new_index)
     media[0].parse_mode = "MarkdownV2"
 

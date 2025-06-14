@@ -7,16 +7,15 @@ async def get_user_data(state: FSMContext, user_id: int):
     if cache_data:
         return cache_data
 
-    # если нет в кеше — загружаем из БД
     vk_accounts, vk_markets = await get_user_info(user_id)
     await state.update_data(vk_accounts=vk_accounts, vk_markets=vk_markets)
 
     # Устанавливаем активные элементы
     for market in vk_markets:
-        if market.get("active"):
+        if market.get("is_active"):
             await state.update_data(active_market_id=market.get("id"))
     for account in vk_accounts:
-        if account.get("active"):
+        if account.get("is_active"):
             await state.update_data(active_vk_account_id=account.get("id"))
 
     return await state.get_data()
@@ -30,22 +29,22 @@ def format_vk_accounts(vk_accounts: list[dict]) -> str:
         result = "👤 Ваши VK аккаунты:\n"
 
     for account in vk_accounts:
-        status_emoji = "✨ " if account['active'] else "💤 "
-        result += f"{status_emoji}{account['firstName']} {account['lastName']} ({account['screenName']})\n"
+        status_emoji = "✨ " if account['is_active'] else "💤 "
+        result += f"{status_emoji}{account['first_name']} {account['last_name']} ({account['screen_name']})\n"
     return result + "\n"
 
 
 def format_vk_markets(vk_markets: list[dict]) -> str:
     if not vk_markets:
-        return "🛒 У вас пока нет магазинов. Создайте их в VK."
+        return "🛒 У вас пока нет магазинов. Создайте их в VK.\n\n"
 
     result = "🏬 Ваш магазин:\n" if len(vk_markets) < 2 else "🏬 Ваши магазины:\n"
     for market in vk_markets:
-        status_emoji = "✨ " if market['active'] else "💤 "
-        result += f"{status_emoji}{market['name']}\n"
+        status_emoji = "✨ " if market['is_active'] else "💤 "
+        result += f"{status_emoji} {market['name']} ({market['members_count']} подп.)\n"
 
     result += "\n"
-    if not any(market["active"] for market in vk_markets):
+    if not any(market["is_active"] for market in vk_markets):
         result += "🧊 У вас нет активного магазина. \nАктивируйте магазин в настройках.\n\n"
 
     return result
@@ -89,23 +88,23 @@ def format_product_caption_md(product: dict, index: int) -> str:
     category = escape_md(product['category'])
     price = escape_md(str(product['price']))
     availability = escape_md(format_availability(product['availability']))
-    stock = escape_md(str(product['stockQuantity']))
-    likes = product.get('likesCount', 0)
-    reposts = product.get('repostCount', 0)
-    views = product.get('viewsCount', 0)
-    reviews = product.get('reviewsCount', 0)
-    created_at = escape_md(str(product.get('createdAt')))
+    stock = escape_md(str(product['stock_quantity']))
+    likes = product.get('likes_count', 0)
+    reposts = product.get('repost_count', 0)
+    views = product.get('views_count', 0)
+    reviews = product.get('reviews_count', 0)
+    created_at = escape_md(str(product.get('created_at')))
 
     return (
-        f"🛍️Товар \\#{index} \\- *{title}*\n\n"
+        f"🛍️ Товар \\#{index} \\- *{title}*\n\n"
         f"💬 {description}\n\n"
-        f"┌📦 Категория: `{category}`\n"
-        f"├ 💰 Цена: `{price}`\n"
-        f"├`{availability}`\n"
-        f"├ 📦 Осталось: `{stock}` шт\\.\n"
-        f"├ 👍 Лайков: `{likes}`\n"
-        f"├ 🔁 Репостов: `{reposts}`\n"
-        f"├ 👁️ Просмотров: `{views}`\n"
-        f"├ ⭐ Отзывов: `{reviews}`\n"
+        f"┌ 🗂️ Категория: `{category}`\n"
+        f"├ 💵 Цена: `{price}`\n"
+        f"├ 📶 Наличие: `{availability}`\n"
+        f"├ 📊 Осталось: `{stock}` шт\\.\n"
+        f"├ ❤️‍🔥 Лайков: `{likes}`\n"
+        f"├ 🔄 Репостов: `{reposts}`\n"
+        f"├ 👀 Просмотров: `{views}`\n"
+        f"├ 📝 Отзывов: `{reviews}`\n"
         f"└ 🕒 Добавлен: `{created_at}`\n"
     )

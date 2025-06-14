@@ -16,7 +16,7 @@ public class UserMarket {
     @JoinColumn(name = "vk_account_id", nullable = false)
     private VkAccount vkAccount;
 
-    @Column(name = "is_active")
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive = false;
 
     @ManyToOne

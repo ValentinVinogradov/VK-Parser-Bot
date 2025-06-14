@@ -1,7 +1,7 @@
 services:
-  parser:
+  vkparser:
     container_name: vkparser
-    image: spring-parser:latest
+    image: spring-vkparser:latest
     build:
       context: ./spring_app/vkparser
       dockerfile: ${DOCKERFILE:-Dockerfile}
@@ -20,6 +20,8 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
     networks:
       - mynetwork
+    ports:
+      - '${PARSER_PORT}:${PARSER_PORT}'
 
   tg-bot:
     container_name: tg-bot
@@ -28,10 +30,10 @@ services:
       context: ./python_app/vkparser
       dockerfile: ${DOCKERFILE:-Dockerfile}
     depends_on:
-      parser:
+      vkparser:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://parser:8080/health/ping || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://vkparser:8080/health/ping || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -69,7 +71,7 @@ services:
     env_file:
       - .env
     depends_on:
-      parser:
+      vkparser:
         condition: service_healthy
       tg-bot:
         condition: service_healthy

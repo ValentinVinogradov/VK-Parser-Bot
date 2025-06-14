@@ -1,33 +1,14 @@
 package com.telegramapi.vkparser.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.UUID;
 
-public class VkMarketDTO {
-    private UUID id;
-    private String name;
-    private boolean isActive;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-}
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record VkMarketDTO (
+    UUID id,
+    String name,
+    @JsonProperty("members_count") int membersCount,
+    @JsonProperty("is_active") boolean isActive
+) {}

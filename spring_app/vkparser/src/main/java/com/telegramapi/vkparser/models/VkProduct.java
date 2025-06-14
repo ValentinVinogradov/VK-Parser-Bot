@@ -14,6 +14,7 @@ public class VkProduct {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "vk_product_id", unique = true, nullable = false)
     private Long vkProductId;
 
     @ManyToOne
@@ -37,7 +38,7 @@ public class VkProduct {
     private List<String> photoUrls;
 
     @Column(name = "stock_quantity")
-    private Integer stockQuantity; // например: "available", "deleted"
+    private Integer stockQuantity;
 
     @Column(name = "likes_count")
     private Integer likesCount;

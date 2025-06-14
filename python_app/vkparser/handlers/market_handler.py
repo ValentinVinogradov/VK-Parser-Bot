@@ -16,7 +16,7 @@ debounce_manager = DebounceManager(delay=5.0)
 async def show_market_menu(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ProfileState.choose_market)
     data = await state.get_data()
-    market_data = data.get("vk_markets")
+    market_data = data.get("vk_markets", [])
     await callback.answer("")
     
     # Отправляем меню магазина
@@ -33,17 +33,17 @@ async def select_active_market(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     market_data = data.get("vk_markets")
     active_market_id = data.get("active_market_id", None)
-    active_vk_account_id = data.get("active_vk_account_id")
+    active_vk_account_id = data.get("active_vk_account_id", None)
     
     if active_market_id == market_id:
         return
     
     for market in market_data:
         if market.get("id") == market_id:
-            market["active"] = True
+            market["is_active"] = True
             await state.update_data(active_market_id=market_id)
         else:
-            market["active"] = False
+            market["is_active"] = False
     
     await state.update_data(vk_markets=market_data)
     

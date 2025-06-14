@@ -12,30 +12,36 @@ public class VkAccount {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "vk_user_id")
+    @Column(name = "vk_user_id", nullable = false, unique = true)
     private Long vkUserId;
 
+    @Column(name = "first_name", nullable = false)
     private String firstName;
 
+    @Column(name = "last_name")
     private String lastName;
 
     @Column(name = "screen_name")
     private String screenName;
 
     //todo можно вынести а можно и не выносить (я про токены)
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "access_token", columnDefinition = "TEXT", unique = true, nullable = false)
     private String accessToken;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "refresh_token", columnDefinition = "TEXT", unique = true, nullable = false)
     private String refreshToken;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "id_token", columnDefinition = "TEXT")
     private String idToken;
 
+    @Column(name = "device_id", nullable = false)
+    private String deviceId;
+
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
-    //todo прописать setActive место хардкода
-    private Boolean isActive = true;
+    @Column(name = "is_active")
+    private Boolean isActive = false;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -128,5 +134,13 @@ public class VkAccount {
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 }

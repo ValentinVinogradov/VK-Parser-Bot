@@ -1,11 +1,11 @@
-NEEDS_JAR_COMMANDS = rebuild rebuild-c rebuild-o rebuild-o-c up oup reset restart
+NEEDS_JAR_COMMANDS = rebuild rebuild-c rebuild-o rebuild-o-c reset restart
 
 build-jar:
-	cd spring_app/vkparser && ./gradlew bootJar --scan
+	cd spring_app/vkparser && ./gradlew bootJar
 
 dev-%:
 	@if echo "$(filter $*, $(NEEDS_JAR_COMMANDS))" | grep -q . && \
-	[ "$(S)" = "" -o "$(S)" = "parser" ]; then \
+	[ "$(S)" = "" -o "$(S)" = "vkparser" ]; then \
 		$(MAKE) build-jar; \
 	fi
 	

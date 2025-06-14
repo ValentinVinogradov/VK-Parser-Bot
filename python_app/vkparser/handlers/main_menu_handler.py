@@ -48,7 +48,7 @@ async def view_first_products(message: Message, state: FSMContext):
                                 product_list=product_list,
                                 total_count=total_count)
         product = await get_product(product_list[current_index])
-        media = [InputMediaPhoto(media=url) for url in product['photoUrls']]
+        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         photo_text = format_product_caption_md(product, current_index)
         media[0].caption = photo_text
         media[0].parse_mode = "MarkdownV2"
@@ -58,7 +58,7 @@ async def view_first_products(message: Message, state: FSMContext):
 
     else:
         product = await get_product(product_list[str(current_index)])
-        media = [InputMediaPhoto(media=url) for url in product['photoUrls']]
+        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         photo_text = format_product_caption_md(product, current_index)
         media[0].caption = photo_text
         media[0].parse_mode = "MarkdownV2"

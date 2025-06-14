@@ -1,5 +1,5 @@
 services:
-  parser:
+  vkparser:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
 

@@ -8,11 +8,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "users")
 public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.UUID)
+//    private UUID id;
 
-    @Column(name = "tg_user_id")
+    @Id
+    @Column(name = "tg_user_id", unique = true, nullable = false)
     private Long tgUserId;
 
 
@@ -23,14 +24,4 @@ public class User {
     public void setTgUserId(Long tgUserId) {
         this.tgUserId = tgUserId;
     }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-
 }

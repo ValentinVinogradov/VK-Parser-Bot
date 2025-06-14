@@ -1,17 +1,13 @@
 from aiogram.fsm.context import FSMContext
-from states.profile_states import ProfileState
 from utils.utils import get_user_data, format_vk_accounts, format_vk_markets
-from keyboards.profile_keyboard import profile_menu_keyboard
-from keyboards.product_keyboard import product_menu_keyboard
-from aiogram.types.input_media_photo import InputMediaPhoto
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from api_requests.product_requsts import get_products
 
 
 
 async def build_profile_text(user_id: int, state: FSMContext) -> str:
     user_data = await get_user_data(state, user_id)
+    print(user_data)
     vk_accounts = user_data.get("vk_accounts", [])
     vk_markets = user_data.get("vk_markets", [])
 

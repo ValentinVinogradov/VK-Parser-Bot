@@ -13,6 +13,7 @@ public interface VkAccountService {
             String accessToken,
             String refreshToken,
             String idToken,
+            String deviceId,
             LocalDateTime expiresAt,
             User user);
     List<VkAccount> getAllUserVkAccounts(Long tgUserId);

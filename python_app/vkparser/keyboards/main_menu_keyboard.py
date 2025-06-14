@@ -13,7 +13,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
-def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
+async def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
     
     vk_auth_url = getenv("VK_AUTH_URL")
     

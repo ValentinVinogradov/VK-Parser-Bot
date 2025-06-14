@@ -18,14 +18,12 @@ public class VkProductController {
         this.vkProductService = vkProductService;
     }
 
-    //todo
     @GetMapping("/get-page")
     public ResponseEntity<VkProductResponseDTO> getProducts(
             @RequestParam(name = "tg_id") Long tgUserId,
             @RequestParam(name = "count") int count,
             @RequestParam(name = "page") int page) {
         try {
-            System.out.println("Кол-во: " + vkProductService.getVkProducts(tgUserId, count, page).count());
             return ResponseEntity.ok(vkProductService.getVkProducts(tgUserId, count, page));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
@@ -33,26 +31,13 @@ public class VkProductController {
     }
 
     @GetMapping("/get/{id}")
-    public ResponseEntity<VkProductDTO> getProduct(@PathVariable(name = "id") UUID vkProductId) {
+    public ResponseEntity<VkProductDTO> getProduct(
+            @PathVariable(name = "id") UUID vkProductId) {
         try {
             return ResponseEntity.ok(vkProductService.getVkProductById(vkProductId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }
     }
-
-//    @GetMapping("/get-page")
-//    public ResponseEntity<VkProductResponseDTO> getAllProducts(
-//            @RequestParam(name = "tg_id") Long tgUserId,
-//            @RequestParam(name = "count") int count,
-//            @RequestParam(name = "page") int page) {
-//        try {
-//            System.out.println("Контроллер товаров");
-//            return ResponseEntity.ok(vkProductService.getVkProducts(tgUserId, count, page));
-//        } catch (Exception e) {
-//            return ResponseEntity.badRequest().body(null);
-//        }
-//    }
-
 }
 

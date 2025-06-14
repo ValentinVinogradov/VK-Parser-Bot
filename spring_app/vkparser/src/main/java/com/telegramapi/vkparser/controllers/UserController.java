@@ -1,10 +1,13 @@
 package com.telegramapi.vkparser.controllers;
 
 import com.telegramapi.vkparser.dto.FullUserInfoDTO;
+import com.telegramapi.vkparser.dto.VkAccountDTO;
 import com.telegramapi.vkparser.impl.UserServiceImpl;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkMarket;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -21,7 +24,8 @@ public class UserController {
     }
 
     @GetMapping("/info")
-    public ResponseEntity<FullUserInfoDTO> getFullUserInfo(@RequestParam(name = "tg_id") Long tgUserId) {
+    public ResponseEntity<FullUserInfoDTO> getFullUserInfo(
+            @RequestParam(name = "tg_id") Long tgUserId) {
         try {
             return ResponseEntity.ok(userService.getFullUserInfo(tgUserId));
         } catch (Exception e) {
@@ -29,8 +33,32 @@ public class UserController {
         }
     }
 
+    @GetMapping("/vk-accounts")
+    public ResponseEntity<List<VkAccountDTO>> getAllVkAccounts(
+            @RequestParam(name = "tg_id") Long tgUserId
+    ) {
+        try {
+            return ResponseEntity.ok(userService.getAllUserVkAccounts(tgUserId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/vk-logout")
+    public ResponseEntity<String> logout(
+            @RequestParam(name = "vk_account_id") UUID vkAccountId
+    ) {
+        try {
+            userService.logoutVkAccount(vkAccountId);
+            return ResponseEntity.ok("Logout successful!");
+        } catch (Exception e) {
+            return  ResponseEntity.badRequest().body(null);
+        }
+    }
+
     @PostMapping("/create-user")
-    public ResponseEntity<String> createUser(@RequestParam(name = "tg_id") Long tgUserId) {
+    public ResponseEntity<String> createUser(
+            @RequestParam(name = "tg_id") Long tgUserId) {
         try {
             if (!userService.existsUserByTgId(tgUserId)) {
                 User user = userService.createUser(tgUserId);
@@ -42,41 +70,32 @@ public class UserController {
         }
     }
 
-    @GetMapping("/check-login")
-    public ResponseEntity<Boolean> checkUserLogin(@RequestParam(name = "tg_id") Long tgUserId) {
+    @GetMapping("/check-active-account")
+    public ResponseEntity<Boolean> checkUserLogin(
+            @RequestParam(name = "tg_id") Long tgUserId) {
         try {
-            return ResponseEntity.ok(userService.checkUserLogin(tgUserId));
+            return ResponseEntity.ok(userService.checkActiveVkAccount(tgUserId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }
     }
 
     @GetMapping("/check-active-market")
-    public ResponseEntity<Boolean> checkUserActiveMarket(@RequestParam(name = "tg_id") Long tgUserId) {
+    public ResponseEntity<Boolean> checkUserActiveMarket(
+            @RequestParam(name = "tg_id") Long tgUserId) {
         try {
             return ResponseEntity.ok(userService.checkUserActiveMarket(tgUserId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null);
         }
     }
-    //todo нахуя он подумать
-//    @GetMapping("/groups/all")
-//    public ResponseEntity<List<VkMarket>> getUserMarkets(@RequestParam Long tgUserId) {
-//        try {
-//            return ResponseEntity.ok(userService.getUserMarkets(tgUserId));
-//        } catch (Exception e) {
-//            return ResponseEntity.notFound().build();
-//        }
-//    }
 
     @PatchMapping("/update-active-market")
     public ResponseEntity<String> updateActiveMarket(
             @RequestParam(name = "account_id") UUID vkAccountId,
             @RequestParam(name = "market_id") UUID marketId) {
         try {
-            System.out.println("1");
             userService.updateActiveMarket(vkAccountId, marketId);
-            System.out.println("2");
             return ResponseEntity.ok("Successfully updated active market!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error to update active market");

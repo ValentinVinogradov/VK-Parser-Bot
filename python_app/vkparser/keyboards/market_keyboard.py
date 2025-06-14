@@ -5,7 +5,7 @@ async def market_menu_keyboard(markets: list[dict]) -> InlineKeyboardMarkup:
     for market in markets:
         name = market.get("name", "Без названия")
         market_id = market.get("id")
-        is_active = market.get("active", False)
+        is_active = market.get("is_active", False)
 
         emoji = "✨" if is_active else "💤"
         button_text = f"{emoji} {name}"

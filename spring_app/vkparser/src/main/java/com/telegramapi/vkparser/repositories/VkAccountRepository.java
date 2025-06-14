@@ -15,16 +15,23 @@ import java.util.UUID;
 public interface VkAccountRepository extends JpaRepository<VkAccount, UUID> {
 
     @Modifying
-    @Query("UPDATE VkAccount va SET va.isActive = false WHERE va.user = :user")
+    @Query("UPDATE VkAccount va SET va.isActive = false WHERE va.user = :user AND va.isActive = true")
     void deactivateVkAccount(User user);
+
 
     @Modifying
     @Query("UPDATE VkAccount va SET va.isActive = true WHERE va.id = :vkAccountId")
     void activateVkAccount(UUID vkAccountId);
 
-    Optional<VkAccount> findByUserAndIsActiveTrue(User user);
+    Optional<VkAccount> findByUser_TgUserIdAndIsActiveTrue(Long tgUserId);
 
-    List<VkAccount> findAllByUser(User user);
+    List<VkAccount> findAllByUser_TgUserId(Long tgUserId);
 
     boolean existsByUser(User user);
+
+    boolean existsByVkUserId(Long vkUserId);
+
+    boolean existsByUser_TgUserId(Long tgUserId);
+
+    Optional<VkAccount> findByVkUserId(Long vkUserId);
 }

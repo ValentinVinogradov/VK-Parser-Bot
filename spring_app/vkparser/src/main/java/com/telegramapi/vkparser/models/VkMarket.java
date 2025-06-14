@@ -12,14 +12,18 @@ public class VkMarket {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "market_name")
+    @Column(name = "market_name", nullable = false)
     private String marketName;
 
-    @Column(name = "market_vk_id")
+    @Column(name = "market_vk_id", nullable = false, unique = true)
     private Long marketVkId;
 
-    @Column(name = "market_url")
+    @Column(name = "members_count", nullable = false)
+    private int membersCount;
+
+    @Column(name = "market_url", nullable = false)
     private String marketUrl;
+
 
     public UUID getId() {
         return id;
@@ -51,5 +55,13 @@ public class VkMarket {
 
     public void setMarketUrl(String marketUrl) {
         this.marketUrl = marketUrl;
+    }
+
+    public int getMembersCount() {
+        return membersCount;
+    }
+
+    public void setMembersCount(int membersCount) {
+        this.membersCount = membersCount;
     }
 }
