@@ -1,5 +1,7 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkAccountDTO;
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.models.User;
@@ -22,21 +24,24 @@ public class LoginServiceImpl implements LoginService {
     private final BlockingServiceImpl blockingService;
     private final TgBotServiceImpl tgBotService;
     private static final Logger log = LoggerFactory.getLogger(LoginServiceImpl.class);
+    private final RedisServiceImpl redisService;
 
     public LoginServiceImpl(UserServiceImpl userService,
                             VkAccountServiceImpl vkAccountService,
                             VkServiceImpl vkService,
                             BlockingServiceImpl blockingService,
-                            TgBotServiceImpl tgBotService) {
+                            TgBotServiceImpl tgBotService,
+                            RedisServiceImpl redisService) {
         this.userService = userService;
         this.vkAccountService = vkAccountService;
         this.vkService = vkService;
         this.blockingService = blockingService;
         this.tgBotService = tgBotService;
+        this.redisService = redisService;
     }
 
     //todo разбить по методам
-    public Mono<VkUserInfoDTO> handleVkAccountAuth(
+    public Mono<VkAccountDTO> handleVkAccountAuth(
             Long tgUserId,
             String code,
             String state,
@@ -45,7 +50,7 @@ public class LoginServiceImpl implements LoginService {
         //todo ЦЕПОЧКА:
         // 1: Создать пользователя
         // 2: Получить его токены и айди с вк
-        // 3: Изменить / Создать вк аккаунт
+        // 3: Создать вк аккаунт
         // 3.1: Создать его в памяти
         // 3.2: Сделать запросы на получение данных профиля и магазинов
         // 3.3: Сохранить в базе данных
@@ -79,7 +84,7 @@ public class LoginServiceImpl implements LoginService {
             .doOnError(e -> log.error("VK auth callback failed", e)));
     }
 
-    private Mono<VkUserInfoDTO> createNewVkAccount(
+    private Mono<VkAccountDTO> createNewVkAccount(
             Long tgUserId, String deviceId, User user,
             VkTokenResponseDTO vkTokenResponseDTO) {
 
@@ -111,7 +116,7 @@ public class LoginServiceImpl implements LoginService {
                 });
     }
 
-    private Mono<VkUserInfoDTO> getUserInfoAndMarkets(
+    private Mono<VkAccountDTO> getUserInfoAndMarkets(
             Long tgUserId, User user, VkAccount vkAccount,
             Mono<VkUserInfoDTO> vkUserInfoMono, Mono<List<VkMarket>> vkMarketsMono) {
         return Mono.zip(vkUserInfoMono, vkMarketsMono)
@@ -135,41 +140,58 @@ public class LoginServiceImpl implements LoginService {
                 });
     }
 
-    private Mono<VkUserInfoDTO> saveAndSyncVkAccount(
-            Long tgUserId, User user, VkAccount vkAccount,
-            List<VkMarket> vkMarkets, VkUserInfoDTO vkUserInfoDTO) {
-        return blockingService.runBlocking(() -> {
-                    log.debug("Saving VK account for userId={}",
-                            user.getTgUserId());
-                    vkAccountService.saveVkAccount(vkAccount);
-                    vkAccountService.setActiveVkAccount(
-                            vkAccount.getId(), user);
-                })
-                .then(userService.syncUserMarkets(vkAccount, vkMarkets))
-                .then(tgBotService.notifyAuthorizationSuccess(
-                        tgUserId, vkUserInfoDTO))
-                .thenReturn(vkUserInfoDTO);
-    }
-
-    private Mono<VkUserInfoDTO> editExistingVkAccount(
-            String deviceId, Long vkUserId, String accessToken,
-            String refreshToken, LocalDateTime expiresAt, String idToken) {
+    private Mono<VkAccountDTO> saveAndSyncVkAccount(
+        Long tgUserId, User user, VkAccount vkAccount,
+        List<VkMarket> vkMarkets, VkUserInfoDTO vkUserInfoDTO) {
+    
         return blockingService.fromBlocking(() -> {
-            VkAccount vkAccount = vkAccountService.getVkAccountByVkId(vkUserId);
-            // обновление инфы
-            vkAccount.setDeviceId(deviceId);
-            vkAccount.setAccessToken(accessToken);
-            vkAccount.setRefreshToken(refreshToken);
-            vkAccount.setExpiresAt(expiresAt);
-            vkAccount.setIdToken(idToken);
-            // создание dto
-            return new VkUserInfoDTO(
-                    vkAccount.getFirstName(),
-                    vkAccount.getLastName(),
-                    vkAccount.getScreenName()
-            );
-        });
-    }
+                log.debug("Saving VK account for userId={}", user.getTgUserId());
+                vkAccountService.saveVkAccount(vkAccount);
+                vkAccountService.setActiveVkAccount(vkAccount.getId(), user);
+                vkAccount.setActive(true);
+                VkAccountCacheDTO vkAccountCacheDTO = new VkAccountCacheDTO(
+                        vkAccount.getId(), vkAccount.getAccessToken()
+                );
+                //todo разобраться почему is_active false
+                redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
+
+
+                return new VkAccountDTO(
+                        vkAccount.getId(),
+                        vkAccount.getFirstName(),
+                        vkAccount.getLastName(),
+                        vkAccount.getScreenName(),
+                        vkAccount.getActive()
+                );
+
+                })
+                .flatMap(vkAccountDTO ->
+                        userService.syncUserMarkets(vkAccount, vkMarkets)
+                                .then(tgBotService.notifyAuthorizationSuccess(tgUserId, vkUserInfoDTO))
+                                .thenReturn(vkAccountDTO)
+                );
+}
+
+
+//     private Mono<VkUserInfoDTO> editExistingVkAccount(
+//             String deviceId, Long vkUserId, String accessToken,
+//             String refreshToken, LocalDateTime expiresAt, String idToken) {
+//         return blockingService.fromBlocking(() -> {
+//             VkAccount vkAccount = vkAccountService.getVkAccountByVkId(vkUserId);
+//             // обновление инфы
+//             vkAccount.setDeviceId(deviceId);
+//             vkAccount.setAccessToken(accessToken);
+//             vkAccount.setRefreshToken(refreshToken);
+//             vkAccount.setExpiresAt(expiresAt);
+//             vkAccount.setIdToken(idToken);
+//             // создание dto
+//             return new VkUserInfoDTO(
+//                     vkAccount.getFirstName(),
+//                     vkAccount.getLastName(),
+//                     vkAccount.getScreenName()
+//             );
+//         });
+//     }
 
     private Mono<User> createTgUser(Long tgUserId) {
         return blockingService.fromBlocking(() -> {

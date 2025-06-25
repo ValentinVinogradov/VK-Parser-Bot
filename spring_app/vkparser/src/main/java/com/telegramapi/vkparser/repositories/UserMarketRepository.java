@@ -15,7 +15,8 @@ import java.util.UUID;
 
 @Repository
 public interface UserMarketRepository extends JpaRepository<UserMarket, Long> {
-    List<UserMarket> findAllByVkAccount(VkAccount vkAccount);
+    // List<UserMarket> findAllByVkAccount(VkAccount vkAccount);
+    List<UserMarket> findAllByVkAccount_Id(UUID id);
 
     @Modifying
     @Query("UPDATE UserMarket um SET um.isActive = false WHERE um.vkAccount.id = :vkAccountId AND um.isActive = true")

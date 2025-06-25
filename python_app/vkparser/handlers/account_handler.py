@@ -32,13 +32,13 @@ async def change_vk_account(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     await state.set_state(AccountState.choose_page)
     
-    cache_data = await state.get_data()
+    cached_data = await state.get_data()
     
-    if cache_data is None:
+    if not cached_data:
         vk_accounts = get_user_vk_accounts(callback.from_user.id)
         # await state.update_data("vk_accounts", vk_accounts_data)
     else: 
-        vk_accounts = cache_data.get("vk_accounts", [])
+        vk_accounts = cached_data.get("vk_accounts", [])
     
     await callback.message.answer("Выберите аккаунт:", reply_markup=await accounts_choose_keyboard(vk_accounts, mode="activate"))
 
@@ -65,28 +65,40 @@ async def logout_vk_account(callback: CallbackQuery, state: FSMContext):
 
 
 #TODO: добавить логику для смены аккаунта со связью с базой данных
-@account_router.callback_query(F.data.startswith("activate_vk_account:"), ProfileState.configure_vk_account)
+@account_router.callback_query(F.data.startswith("activate_vk_account:"), AccountState.choose_page)
 async def activate_vk_account(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
+    await state.set_state(AccountState.activate_page)
     
     account_id = callback.data.split(":")[1]
     
-    data = await state.get_data()
-    vk_accounts = data.get("vk_accounts")
-    active_account_id = data.get("active_market_id", None)
+    cached_data = await state.get_data()
+    vk_accounts_data = cached_data.get("vk_accounts", [])
+    
+    #TODO
+    if not vk_accounts_data:
+        vk_accounts = await get_user_vk_accounts(callback.from_user.id)
+        await state.update_data(vk_accounts=vk_accounts)
+        vk_accounts_data = vk_accounts
     
     
-    for account in vk_accounts:
+    for account in vk_accounts_data:
+        if account.get("is_active") == True:
+            active_account_id = account.get("id")
+            if active_account_id == account_id:
+                return
         if account.get("id") == account_id:
-            account["is_active"] = True  
+            account["is_active"] = True
+            await state.update_data(active_account_id=account_id)
         else:
             account["is_active"] = False 
+        
     
     await state.update_data(vk_accounts=vk_accounts)
     
     await callback.message.edit_reply_markup(reply_markup=await accounts_choose_keyboard(vk_accounts, mode="activate"))
     
-    await callback.message.answer("Аккаунт активирован.")
+    await callback.message.answer(f"Вы успешно вошли в аккаунт {"name"}")
 
 
 #TODO: добавить логику для удаления аккаунта из базы данных

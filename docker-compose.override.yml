@@ -6,3 +6,4 @@ services:
   tg-bot:
     volumes:
       - ./python_app/vkparser:/app
+    restart: always

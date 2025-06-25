@@ -7,9 +7,12 @@ bot: Bot = None
 
 async def healthcheck(request: web.Request):
     try:
-        data = await request.json()
-        print(f"tg-bot: ping -> parser: {data}")
-        return web.Response(text=f"pong")
+        if request.method == "POST":
+            data = await request.json()
+            print(f"tg-bot: ping -> parser: {data}")
+        else:
+            print("tg-bot: healthcheck GET received")
+        return web.Response(text="pong")
 
     except (KeyError, json.JSONDecodeError):
         return web.Response(status=400, text="Bad request")

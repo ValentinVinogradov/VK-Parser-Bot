@@ -1,28 +1,48 @@
-from datetime import datetime
 from aiogram.fsm.context import FSMContext
-from api_requests.user_requests import get_user_info
+from logging import getLogger
 
-async def get_user_data(state: FSMContext, user_id: int):
-    cache_data = await state.get_data()
-    if cache_data:
-        return cache_data
+logger = getLogger(__name__)
 
-    vk_accounts, vk_markets = await get_user_info(user_id)
-    await state.update_data(vk_accounts=vk_accounts, vk_markets=vk_markets)
+# async def get_user_data(state: FSMContext, user_id: int):
+    # cached_data = await state.get_data()
+    # logger.debug(f"Данные из кеша: {cached_data}")
+    
+    # if cached_data:
+    #     logger.info(f"Данные из кеша есть, делаем возврат.")
+    #     return cached_data
 
-    # Устанавливаем активные элементы
-    for market in vk_markets:
-        if market.get("is_active"):
-            await state.update_data(active_market_id=market.get("id"))
-    for account in vk_accounts:
-        if account.get("is_active"):
-            await state.update_data(active_vk_account_id=account.get("id"))
+    # logger.info(f"Данных из кеша нет.")
+    
+    # vk_accounts, vk_markets = await get_user_info(user_id)
+    # logger.info(f"Получили инфу -> аккаунты и магазины.")
+    # logger.debug(f"Получили инфу. Аккаунты: {vk_accounts}, магазины: {vk_markets}")
+    
+    
+    # await state.update_data(vk_accounts=vk_accounts, vk_markets=vk_markets)
+    # logger.debug(f"Обновили данные состояния профиля")
 
-    return await state.get_data()
+    # # Устанавливаем активные элементы
+    # for market in vk_markets:
+    #     if market.get("is_active"):
+    #         await state.update_data(active_market_id=market.get("id"))
+    #         logger.debug(f"Установили активный магазин: {market.get("id")}")
+    #         break
+    
+    # for account in vk_accounts:
+    #     if account.get("is_active"):
+    #         await state.update_data(active_vk_account_id=account.get("id"))
+    #         logger.debug(f"Установили активный аккаунт: {account.get("id")}")
+    #         break
+    
+    # logger.info(f"Возвращаем полученные данные.")
+
+    # return await state.get_data()
 
 
 
 def format_vk_accounts(vk_accounts: list[dict]) -> str:
+    logger.debug(f"Форматирование текста для аккантов.")
+    logger.debug(f"Аккаунт: {vk_accounts}")
     if len(vk_accounts) < 2:
         result = "👤 Ваш VK аккаунт:\n"
     else:
@@ -35,6 +55,7 @@ def format_vk_accounts(vk_accounts: list[dict]) -> str:
 
 
 def format_vk_markets(vk_markets: list[dict]) -> str:
+    logger.debug(f"Форматирование текста для магазинов.")
     if not vk_markets:
         return "🛒 У вас пока нет магазинов. Создайте их в VK.\n\n"
 
@@ -83,6 +104,8 @@ def format_availability(code: int) -> str:
 
 
 def format_product_caption_md(product: dict, index: int) -> str:
+    logger.debug(f"Форматирование текста для товара.")
+    
     title = escape_md(product['title'])
     description = escape_md(product['description'])
     category = escape_md(product['category'])

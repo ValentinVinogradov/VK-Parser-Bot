@@ -129,7 +129,7 @@ public class VkProductServiceImpl {
             long totalCount = productsFromDb.count();
 
             if (productIds.isEmpty()) {
-                log.info("No cached products found. Synchronizing from VK...");
+                log.info("No stored products found. Synchronizing from VK...");
                 List<VkProduct> syncedProducts = getSynchronizedVkProducts(vkMarket, activeVkAccount).block();
                 if (syncedProducts != null && !syncedProducts.isEmpty()) {
                     return convertVkProductsToIdDto(syncedProducts, totalCount);

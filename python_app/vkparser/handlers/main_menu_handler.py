@@ -11,9 +11,12 @@ from middlewares.main_menu_middleware import MainMenuMiddleware
 from aiogram.types.input_media_photo import InputMediaPhoto
 from states.profile_states import ProfileState
 from states.product_states import ProductState
-from collections import defaultdict
 from handlers.view.view_modules import build_profile_text
 from utils.utils import format_product_caption_md
+from logging import getLogger
+
+
+logger = getLogger(__name__)
 
 
 main_menu_router = Router()
@@ -23,64 +26,133 @@ main_menu_router.message.middleware(MainMenuMiddleware())
 # TODO: сделать как то универсальным этот метод
 @main_menu_router.message(F.text == "🛍 Просмотр товаров")
 async def view_first_products(message: Message, state: FSMContext):
+    logger.info(f"Нажата кнопка 🛍 Просмотр товаров")
+    
     await state.set_state(ProductState.main_show)
+    logger.debug(f"Установили состояние main_show")
+    
     count = 5
     data = await state.get_data()
+    logger.debug("Текущие данные с кеша FSM: %s", data)
+
     current_index = data.get("current_index", None)
+    logger.debug(f"Current index from cache: {current_index}")
+    
     current_page = data.get("current_page", None)
+    logger.debug(f"Current page from cache: {current_page}")
+    
     product_list = data.get("product_list", None)
+    logger.debug(f"Product list from cache: {product_list}")
+    
     total_count = data.get("total_count", None)
+    logger.debug(f"Total count from cache: {total_count}")
     
     if current_index is None or \
         current_page is None or \
-            product_list is None or \
-                total_count is None:
+        product_list is None or \
+        total_count is None:
+        
+        logger.info("Первый запуск просмотра товаров — загружаем первую страницу")
+
         current_index = 1
         current_page = 1    
-        product_data = await get_products(message.from_user.id, 
-                                          count, 
-                                          current_page)
+        try:
+            product_data = await get_products(message.from_user.id, count, current_page)
+        except Exception as e:
+            logger.exception("Ошибка при получении списка товаров: %s", e)
+            await message.answer("Не удалось загрузить товары. Попробуйте позже.")
+            return
+        logger.debug(f"Получили товары: {product_data}")
+        
         product_ids = product_data.get("uuids", [])
+        logger.debug(f"Получили айди товаров: {product_ids}")
+        
         total_count = product_data.get("count", None)
+        logger.debug(f"Получили полное кол-во товаров: {total_count}")
+        
         product_list = {i + 1: uuid for i, uuid in enumerate(product_ids)}
+
+        logger.debug("Загружено %d айди товаров на странице %d", len(product_ids), current_page)
+
         await state.update_data(current_index=current_index,
                                 current_page=current_page,
                                 product_list=product_list,
                                 total_count=total_count)
-        product = await get_product(product_list[current_index])
+        
+        logger.debug(f"Обновили данные в состоянии.")
+        
+        try:
+            product = await get_product(product_list[current_index])
+        except Exception as e:
+            logger.exception("Ошибка при получении карточки товара: %s", e)
+            await message.answer("Не удалось загрузить товар. Попробуйте позже.")
+            return
+
+        logger.info(f"Получили товар: {product}")
+        
         media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         photo_text = format_product_caption_md(product, current_index)
         media[0].caption = photo_text
         media[0].parse_mode = "MarkdownV2"
+        
         await message.answer_media_group(media=media)
-            
+        logger.debug("Отправлены фото товара %s", product['uuid'])
+
         await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
 
     else:
-        product = await get_product(product_list[str(current_index)])
+        logger.info("Повторный показ товара (страница: %s, индекс: %s)", current_page, current_index)
+
+        try:
+            product = await get_product(product_list[str(current_index)])
+        except Exception as e:
+            logger.exception("Ошибка при получении карточки товара: %s", e)
+            await message.answer("Не удалось загрузить товар. Попробуйте позже.")
+            return
+        logger.info(f"Получили товар: {product}")
+        
         media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
         photo_text = format_product_caption_md(product, current_index)
         media[0].caption = photo_text
         media[0].parse_mode = "MarkdownV2"
+        
         await message.answer_media_group(media=media)
-            
+        logger.debug("Отправлены фото товара %s", product['uuid'])
+
         await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
 
 
 
-# TODO: добавить кеширование для получения информации о пользователе
 @main_menu_router.message(F.text == "👤 Профиль")
-async def settings_handler(message: types.Message, state: FSMContext):
+async def profile_handler(message: types.Message, state: FSMContext):
+    logger.info(f"Нажата кнопка 👤 Профиль")
+    
     await state.set_state(ProfileState.profile)
-    text = await build_profile_text(message.from_user.id, state)
+    logger.debug(f"Установили состояние profile")
+    
+    vk_accounts, vk_markets = await get_user_info(message.from_user.id)
+    logger.info(f"Получили данные для отображения.")
+    logger.debug(f"Получили данные для отображения. Аккаунты: {vk_accounts}, магазины: {vk_markets}")
+    
+    logger.debug(f"Полученные аккаунты: {vk_accounts}, магазины: {vk_markets}")
+    
+    text = await build_profile_text(vk_accounts, vk_markets)
     await message.answer(text, reply_markup=profile_menu_keyboard())
 
 
 @main_menu_router.callback_query(F.data == "update_profile")
 async def update_profile_handler(callback: CallbackQuery, state: FSMContext):
+    logger.info(f"Нажата кнопка update_profile")
+    
     await state.set_state(ProfileState.profile)
+    logger.debug(f"Установили состояние profile")
+
     await callback.answer("")
-    text = await build_profile_text(callback.from_user.id, state)
+    
+    vk_accounts, vk_markets = await get_user_info(callback.from_user.id)
+    
+    text = await build_profile_text(vk_accounts, vk_markets)
     if text == callback.message.text:
+        logger.debug(f"Текст совпадает.")
         return
     await callback.message.edit_text(text, reply_markup=profile_menu_keyboard())

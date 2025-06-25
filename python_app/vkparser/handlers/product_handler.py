@@ -11,15 +11,21 @@ from aiogram.types.input_media_photo import InputMediaPhoto
 from states.product_states import ProductState
 from keyboards.product_keyboard import pages_keyboard
 from utils.utils import format_product_caption_md
+from logging import getLogger
 
+
+logger = getLogger(__name__)
 
 product_menu_handler = Router()
 
 @product_menu_handler.callback_query(F.data.startswith("page:"), ProductState.choose_page)
 async def show_pages(callback: CallbackQuery, state: FSMContext):
+    logger.info(f"Нажата кнопка с выбором страницы")
     await callback.answer("")
     await callback.message.delete()
     await state.set_state(ProductState.main_show)
+    logger.info(f"Установлено состояние main_show")
+    
     data = await state.get_data()
     page = int(callback.data.split(":")[1])
     count = 5

@@ -1,5 +1,6 @@
 package com.telegramapi.vkparser.controllers;
 
+import com.telegramapi.vkparser.dto.VkAccountDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import jakarta.validation.constraints.NotBlank;
@@ -27,7 +28,7 @@ public class LoginController {
 
     //todo разобраться хули Mono (вроде как и так и так можно хз)
     @GetMapping("/callback")
-    public Mono<ResponseEntity<VkUserInfoDTO>> handleVkAccountAuth(
+    public Mono<ResponseEntity<VkAccountDTO>> handleVkAccountAuth(
             @RequestParam
             @NotBlank(message = "Code must not be blank")
             String code,

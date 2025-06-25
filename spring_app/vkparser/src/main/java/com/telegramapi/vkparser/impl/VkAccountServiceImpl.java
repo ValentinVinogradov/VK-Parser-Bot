@@ -5,6 +5,7 @@ import com.telegramapi.vkparser.models.VkAccount;
 import com.telegramapi.vkparser.repositories.VkAccountRepository;
 import com.telegramapi.vkparser.services.VkAccountService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -82,17 +83,19 @@ public class VkAccountServiceImpl implements VkAccountService {
     }
 
     public VkAccount getActiveAccount(Long tgUserId) {
+        log.info("Getting active vk account for user ID: {}", tgUserId);
         return vkAccountRepository.findByUser_TgUserIdAndIsActiveTrue(tgUserId)
                 .map(account -> {
                     log.info("Found active VK account for user ID: {}", tgUserId);
                     return account;
                 })
                 .orElseGet(() -> {
-                    log.warn("No active VK account found for user ID: {}", tgUserId);
+                    log.info("No active VK account found for user ID: {}", tgUserId);
                     return null;
                 });
     }
 
+    @Transactional
     public void setActiveVkAccount(UUID vkAccountId, User user) {
         log.info("Switching active VK account to ID: {} for user ID: {}", vkAccountId, user.getTgUserId());
         vkAccountRepository.deactivateVkAccount(user);

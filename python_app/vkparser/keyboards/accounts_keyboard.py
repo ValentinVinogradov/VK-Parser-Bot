@@ -35,25 +35,7 @@ async def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="🔗 Войти через VK", url=url)]
         ]
     )
-    
-    
-# как то общий интерфейс для всех кнопок, чтобы не дублировать код
-# async def accounts_choose_keyboard(vk_accounts: list[dict]) -> InlineKeyboardMarkup:
-#     buttons = []
 
-#     for account in vk_accounts:
-#         name = account.get("first_name", "Без имени")
-#         username = account.get("screen_name", "Без имени")
-#         account_id = account.get("id")
-#         is_active = account.get("is_active", False)
-
-#         emoji = "✨" if is_active else "💤"
-#         button_text = f"{emoji} {name} (@{username}) "
-#         callback_data = f"select_active_account:{account_id}"
-
-#         buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
-
-#     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def accounts_choose_keyboard(
     vk_accounts: list[dict],
@@ -78,5 +60,7 @@ async def accounts_choose_keyboard(
             raise ValueError(f"Unsupported mode: {mode}")
         button_text = f"{emoji} {name} (@{username})"
         buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
+    
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_choose_accounts")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)

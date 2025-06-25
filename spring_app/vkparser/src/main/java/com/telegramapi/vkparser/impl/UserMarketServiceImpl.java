@@ -43,12 +43,18 @@ public class UserMarketServiceImpl implements UserMarketService {
                 userMarket.getVkMarket().getId(), userMarket.getVkAccount().getId());
     }
 
-    @Override
-    public List<UserMarket> getAllUserMarkets(VkAccount vkAccount) {
-        List<UserMarket> markets = userMarketRepository.findAllByVkAccount(vkAccount);
-        log.info("Fetched {} UserMarkets for VK account ID: {}", markets.size(), vkAccount.getId());
+    public List<UserMarket> getAllUserMarkets(UUID vkAccountId) {
+        List<UserMarket> markets = userMarketRepository.findAllByVkAccount_Id(vkAccountId);
+        log.info("Fetched {} UserMarkets for VK account ID: {}", markets.size(), vkAccountId);
         return markets;
     }
+
+    // @Override
+    // public List<UserMarket> getAllUserMarkets(VkAccount vkAccount) {
+    //     List<UserMarket> markets = userMarketRepository.findAllByVkAccount(vkAccount);
+    //     log.info("Fetched {} UserMarkets for VK account ID: {}", markets.size(), vkAccount.getId());
+    //     return markets;
+    // }
 
     public UserMarket getUserMarketById(Long vkMarketId) {
         return userMarketRepository.findById(vkMarketId)
