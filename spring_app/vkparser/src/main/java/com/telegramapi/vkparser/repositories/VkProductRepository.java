@@ -12,8 +12,8 @@ import java.util.UUID;
 
 public interface VkProductRepository extends JpaRepository<VkProduct, UUID> {
 
-    @Query("SELECT vp.id FROM VkProduct vp WHERE vp.vkMarket = :vkMarket")
-    Page<UUID> findIdsByVkMarket(VkMarket vkMarket, Pageable pageable);
+    @Query("SELECT vp FROM VkProduct vp WHERE vp.vkMarket = :vkMarket")
+    Page<VkProduct> findProductsByVkMarket(VkMarket vkMarket, Pageable pageable);
 
     List<VkProduct> findAllByVkMarket(VkMarket vkMarket);
 }

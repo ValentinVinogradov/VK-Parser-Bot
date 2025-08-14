@@ -58,6 +58,13 @@ public class VkAccountServiceImpl implements VkAccountService {
         log.info("Saved VK account with ID: {}", vkAccount.getId());
     }
 
+    public void updateVkAccountFields(UUID id,
+                                      String accessToken,
+                                      String refreshToken,
+                                      LocalDateTime expiresAt) {
+        vkAccountRepository.updateVkAccountFields(id, accessToken, refreshToken, expiresAt);
+    }
+
     public VkAccount createVkAccount(
             Long vkUserId,
             String accessToken,

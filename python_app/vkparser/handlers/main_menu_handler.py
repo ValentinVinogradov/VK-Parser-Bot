@@ -3,6 +3,8 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram import F
+from clients.redis_client import redis
+import json
 from keyboards.product_keyboard import product_menu_keyboard
 from keyboards.profile_keyboard import profile_menu_keyboard
 from api_requests.product_requsts import get_products, get_product
@@ -28,6 +30,8 @@ main_menu_router.message.middleware(MainMenuMiddleware())
 async def view_first_products(message: Message, state: FSMContext):
     logger.info(f"Нажата кнопка 🛍 Просмотр товаров")
     
+    user_id = message.from_user.id
+    
     await state.set_state(ProductState.main_show)
     logger.debug(f"Установили состояние main_show")
     
@@ -41,85 +45,56 @@ async def view_first_products(message: Message, state: FSMContext):
     current_page = data.get("current_page", None)
     logger.debug(f"Current page from cache: {current_page}")
     
-    product_list = data.get("product_list", None)
-    logger.debug(f"Product list from cache: {product_list}")
-    
     total_count = data.get("total_count", None)
     logger.debug(f"Total count from cache: {total_count}")
     
+    
     if current_index is None or \
         current_page is None or \
-        product_list is None or \
         total_count is None:
         
         logger.info("Первый запуск просмотра товаров — загружаем первую страницу")
 
         current_index = 1
-        current_page = 1    
-        try:
-            product_data = await get_products(message.from_user.id, count, current_page)
-        except Exception as e:
-            logger.exception("Ошибка при получении списка товаров: %s", e)
-            await message.answer("Не удалось загрузить товары. Попробуйте позже.")
-            return
-        logger.debug(f"Получили товары: {product_data}")
+        current_page = 1
         
-        product_ids = product_data.get("uuids", [])
-        logger.debug(f"Получили айди товаров: {product_ids}")
-        
-        total_count = product_data.get("count", None)
-        logger.debug(f"Получили полное кол-во товаров: {total_count}")
-        
-        product_list = {i + 1: uuid for i, uuid in enumerate(product_ids)}
-
-        logger.debug("Загружено %d айди товаров на странице %d", len(product_ids), current_page)
-
         await state.update_data(current_index=current_index,
                                 current_page=current_page,
-                                product_list=product_list,
                                 total_count=total_count)
         
         logger.debug(f"Обновили данные в состоянии.")
-        
-        try:
-            product = await get_product(product_list[current_index])
-        except Exception as e:
-            logger.exception("Ошибка при получении карточки товара: %s", e)
-            await message.answer("Не удалось загрузить товар. Попробуйте позже.")
-            return
 
-        logger.info(f"Получили товар: {product}")
-        
-        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
-        photo_text = format_product_caption_md(product, current_index)
-        media[0].caption = photo_text
-        media[0].parse_mode = "MarkdownV2"
-        
-        await message.answer_media_group(media=media)
-        logger.debug("Отправлены фото товара %s", product['uuid'])
+    logger.info("Показ товара (страница: %s, индекс: %s)", current_page, current_index)
+    try:
+        product_data = await get_products(message.from_user.id, count, current_page)
+        logger.debug(f"Получили товары: {product_data}")
+        products = product_data.get("products", None)
+    except Exception as e:
+        logger.exception("Ошибка при получении списка товаров: %s", e)
+        await message.answer("Не удалось загрузить товары. Попробуйте позже.")
+        return
 
-        await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
-
-    else:
-        logger.info("Повторный показ товара (страница: %s, индекс: %s)", current_page, current_index)
-
-        try:
-            product = await get_product(product_list[str(current_index)])
-        except Exception as e:
-            logger.exception("Ошибка при получении карточки товара: %s", e)
-            await message.answer("Не удалось загрузить товар. Попробуйте позже.")
-            return
-        logger.info(f"Получили товар: {product}")
+    logger.debug("Загружено %d айди товаров на странице %d", len(products), current_page)
+    
+    try:
+        product = products[current_index-1]
+    except Exception as e:
+        logger.exception("Ошибка при получении карточки товара: %s", e)
+        await message.answer("Не удалось загрузить товар. Попробуйте позже.")
+        return
+    
+    
+    logger.info(f"Получили товар: {product}")
         
-        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
-        photo_text = format_product_caption_md(product, current_index)
-        media[0].caption = photo_text
-        media[0].parse_mode = "MarkdownV2"
-        
-        await message.answer_media_group(media=media)
-        logger.debug("Отправлены фото товара %s", product['uuid'])
+    media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
+    photo_text = format_product_caption_md(product, current_index)
+    media[0].caption = photo_text
+    media[0].parse_mode = "MarkdownV2"
+    
+    await message.answer_media_group(media=media)
+    logger.debug("Отправлены фото товара %s", product['id'])
 
-        await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
+    await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
 
 
 

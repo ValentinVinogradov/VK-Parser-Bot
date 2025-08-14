@@ -1,5 +1,7 @@
 from aiogram.fsm.context import FSMContext
 from logging import getLogger
+from datetime import datetime, timezone
+from babel.dates import format_date
 
 logger = getLogger(__name__)
 
@@ -103,6 +105,13 @@ def format_availability(code: int) -> str:
     }.get(code, "⚠️ Неизвестно")
 
 
+def format_date_instant(date_instant: int) -> str:
+    date = datetime.fromtimestamp(date_instant, tz=timezone.utc)
+
+    formatted_date = format_date(date, "d MMMM yyyy", locale='ru')
+    return formatted_date
+
+
 def format_product_caption_md(product: dict, index: int) -> str:
     logger.debug(f"Форматирование текста для товара.")
     
@@ -116,7 +125,7 @@ def format_product_caption_md(product: dict, index: int) -> str:
     reposts = product.get('repost_count', 0)
     views = product.get('views_count', 0)
     reviews = product.get('reviews_count', 0)
-    created_at = escape_md(str(product.get('created_at')))
+    created_at = escape_md(format_date_instant(product.get('created_at')))
 
     return (
         f"🛍️ Товар \\#{index} \\- *{title}*\n\n"

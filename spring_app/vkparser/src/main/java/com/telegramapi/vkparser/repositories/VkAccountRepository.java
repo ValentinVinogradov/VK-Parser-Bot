@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +35,11 @@ public interface VkAccountRepository extends JpaRepository<VkAccount, UUID> {
     boolean existsByUser_TgUserId(Long tgUserId);
 
     Optional<VkAccount> findByVkUserId(Long vkUserId);
+
+    @Modifying
+    @Query("UPDATE VkAccount v SET " +
+            "v.accessToken = :accessToken, " +
+            "v.refreshToken = :refreshToken, " +
+            "v.expiresAt = :expiresAt WHERE v.id = :id")
+    void updateVkAccountFields(UUID id, String accessToken, String refreshToken, LocalDateTime expiresAt);
 }

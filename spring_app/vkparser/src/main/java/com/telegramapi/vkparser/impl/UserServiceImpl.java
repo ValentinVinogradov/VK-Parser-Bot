@@ -1,12 +1,7 @@
 package com.telegramapi.vkparser.impl;
 
 
-
-import com.telegramapi.vkparser.dto.FullUserInfoDTO;
-import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
-import com.telegramapi.vkparser.dto.VkMarketCacheDTO;
-import com.telegramapi.vkparser.dto.VkAccountDTO;
-import com.telegramapi.vkparser.dto.VkMarketDTO;
+import com.telegramapi.vkparser.dto.*;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkAccount;
@@ -24,9 +19,9 @@ import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
-
+    private final String STATE = System.getenv("VK_STATE");
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
-
+    
     private final UserRepository userRepository;
     private final UserMarketServiceImpl userMarketService;
     private final BlockingServiceImpl blockingService;
@@ -34,6 +29,7 @@ public class UserServiceImpl implements UserService {
     private final VkMarketServiceImpl vkMarketService;
     private final VkServiceImpl vkService;
     private final RedisServiceImpl redisService;
+    private final TokenServiceImpl tokenService;
 
     public UserServiceImpl(UserMarketServiceImpl userMarketService,
                            BlockingServiceImpl blockingService,
@@ -41,7 +37,8 @@ public class UserServiceImpl implements UserService {
                            VkAccountServiceImpl vkAccountService,
                            VkMarketServiceImpl vkMarketService,
                            VkServiceImpl vkService, 
-                           RedisServiceImpl redisService) {
+                           RedisServiceImpl redisService,
+                           TokenServiceImpl tokenService) {
         this.userMarketService = userMarketService;
         this.blockingService = blockingService;
         this.userRepository = userRepository;
@@ -49,6 +46,7 @@ public class UserServiceImpl implements UserService {
         this.vkMarketService = vkMarketService;
         this.vkService = vkService;
         this.redisService = redisService;
+        this.tokenService = tokenService;
     }
 
     @Override
@@ -163,6 +161,39 @@ public class UserServiceImpl implements UserService {
         return vkMarkets;
     }
 
+    //todo понять почему тут обновляется токены
+    public Mono<List<VkMarket>> getVkMarkets(VkAccount vkAccount) {
+        log.info("Fetching vk markets from VK for VK ID: {}", vkAccount.getVkUserId());
+        Long vkUserId = vkAccount.getVkUserId();
+        VkAccountCacheDTO vkDTO = new VkAccountCacheDTO(
+                vkAccount.getId(),
+                vkAccount.getAccessToken(),
+                vkAccount.getRefreshToken(),
+                vkAccount.getDeviceId(),
+                vkAccount.getExpiresAt());
+        return tokenService.getFreshAccessToken(vkDTO, STATE)
+            .flatMap(accessToken -> {
+                log.info("Refreshing token for fetch vk markets completed.");
+                return vkService.getUserMarkets(vkUserId, accessToken);
+            });
+    }
+
+    public Mono<VkUserInfoDTO> getUserInfo(VkAccount vkAccount) {
+        log.info("Fetching user profile info from VK.");
+        VkAccountCacheDTO vkDTO = new VkAccountCacheDTO(
+                vkAccount.getId(),
+                vkAccount.getAccessToken(),
+                vkAccount.getRefreshToken(),
+                vkAccount.getDeviceId(),
+                vkAccount.getExpiresAt());
+        return tokenService.getFreshAccessToken(vkDTO, STATE)
+            .flatMap(accessToken -> {
+                log.info("Refreshing token for user info completed.");
+                return vkService.getUserProfileInfo(accessToken);
+            });
+    }
+
+
     @Override
     public User createUser(Long tgUserId) {
         log.info("Creating new user with Telegram ID: {}", tgUserId);
@@ -199,7 +230,11 @@ public class UserServiceImpl implements UserService {
         VkAccount vkAccount = vkAccountService.getActiveAccount(tgUserId);
         if (vkAccount != null) {
             VkAccountCacheDTO vkAccountCacheDTO = new VkAccountCacheDTO(
-                vkAccount.getId(), vkAccount.getAccessToken());
+                vkAccount.getId(),
+                vkAccount.getAccessToken(),
+                vkAccount.getRefreshToken(),
+                vkAccount.getDeviceId(),
+                vkAccount.getExpiresAt());
             redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
             return true;
         }

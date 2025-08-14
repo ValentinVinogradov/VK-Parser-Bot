@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record VkProductResponseDTO (
-        List<UUID> uuids,
+        List<VkProductDTO> products,
+        Integer page,
         Long count
 ) {}

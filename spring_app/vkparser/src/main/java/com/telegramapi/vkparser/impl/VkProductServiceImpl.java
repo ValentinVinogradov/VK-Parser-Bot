@@ -1,9 +1,12 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkMarketCacheDTO;
 import com.telegramapi.vkparser.dto.VkProductDTO;
 import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.models.*;
 import com.telegramapi.vkparser.repositories.VkProductRepository;
+import com.telegramapi.vkparser.services.VkMarketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -27,33 +30,37 @@ public class VkProductServiceImpl {
     private final VkServiceImpl vkService;
     private final BlockingServiceImpl blockingService;
     private final UserServiceImpl userService;
+    private final VkMarketService vkMarketService;
     private final VkAccountServiceImpl vkAccountService;
     private final UserMarketServiceImpl userMarketService;
     private final TokenServiceImpl tokenService;
+    private final RedisServiceImpl redisService;
 
 
     public VkProductServiceImpl(VkProductRepository vkProductRepository,
                                 VkServiceImpl vkService,
                                 BlockingServiceImpl blockingService,
-                                UserServiceImpl userService,
+                                UserServiceImpl userService, VkMarketService vkMarketService,
                                 VkAccountServiceImpl vkAccountService,
-                                UserMarketServiceImpl userMarketService, TokenServiceImpl tokenService) {
+                                UserMarketServiceImpl userMarketService, TokenServiceImpl tokenService, RedisServiceImpl redisService) {
         this.vkProductRepository = vkProductRepository;
         this.vkService = vkService;
         this.blockingService = blockingService;
         this.userService = userService;
+        this.vkMarketService = vkMarketService;
         this.vkAccountService = vkAccountService;
         this.userMarketService = userMarketService;
         this.tokenService = tokenService;
+        this.redisService = redisService;
     }
 
     public VkProductResponseDTO getVkProductsFromDatabase(VkMarket vkMarket, int count, int page) {
         log.debug("Fetching VK products from database for market ID: {}, page: {}, count: {}", vkMarket.getId(), page, count);
         PageRequest pageRequest = PageRequest.of(page - 1, count, Sort.by("title").ascending());
-        Page<UUID> vkProductsPage = vkProductRepository.findIdsByVkMarket(vkMarket, pageRequest);
-        return new VkProductResponseDTO(
-                vkProductsPage.getContent(),
-                vkProductsPage.getTotalElements());
+        Page<VkProduct> vkProductsPage = vkProductRepository.findProductsByVkMarket(vkMarket, pageRequest);
+        List<VkProduct> vkProductsContent = vkProductsPage.getContent();
+
+        return convertVkProductsToDto(vkProductsContent, page, vkProductsPage.getTotalElements());
     }
 
 
@@ -62,10 +69,11 @@ public class VkProductServiceImpl {
         return vkProductRepository.findAllByVkMarket(vkMarket);
     }
 
-    public VkProductResponseDTO convertVkProductsToIdDto(List<VkProduct> vkProducts, Long count) {
+    public VkProductResponseDTO convertVkProductsToDto(List<VkProduct> vkProducts, Integer page, Long count) {
         log.debug("Converting VK products to ID DTO. Count: {}", count);
         return new VkProductResponseDTO(
-                vkProducts.stream().map(VkProduct::getId).toList(),
+                vkProducts.stream().map(this::convertVkProductToFullDto).toList(),
+                page,
                 count);
     }
 
@@ -87,61 +95,89 @@ public class VkProductServiceImpl {
         );
     }
 
-        //todo разобраться потом
-        public Mono<List<VkProduct>> getSynchronizedVkProducts(VkMarket vkMarket, VkAccount vkAccount) {
-            Long vkMarketId = vkMarket.getMarketVkId();
-            log.info("Starting synchronization for VK market ID: {}", vkMarketId);
+    public void syncProducts(VkMarket vkMarket, VkAccountCacheDTO vkDTO) {
+        Long vkMarketId = vkMarket.getMarketVkId();
+        log.info("Starting synchronization for VK market ID: {}", vkMarketId);
 
-            return tokenService.getFreshAccessToken(vkAccount, STATE).flatMap(accessToken -> {
-                log.info("Fetching VK products via VK API for market ID: {}", vkMarketId);
-                return vkService.getProducts(accessToken, vkMarketId)
-                        .flatMapMany(Flux::fromIterable)
-                        .flatMap(vkProduct -> blockingService.fromBlocking(() -> {
-                            vkProduct.setVkMarket(vkMarket);
-                            saveVkProduct(vkProduct);
-                            return vkProduct;
-                        }))
-                        .collectList()
-                        .doOnSuccess(products -> log.info(
-                                "Successfully synchronized {} VK products",
-                                products.size()))
-                        .doOnError(ex -> log.error("Failed to synchronize VK products", ex));
-            });
-        }
+        tokenService.getFreshAccessToken(vkDTO, STATE)
+                .flatMap(accessToken -> {
+                    log.info("Fetching VK products via VK API for market ID: {}", vkMarketId);
+                    return vkService.getProducts(accessToken, vkMarketId)
+                            .flatMapMany(Flux::fromIterable)
+                            .flatMap(vkProduct -> blockingService.runBlocking(() -> {
+                                vkProduct.setVkMarket(vkMarket);
+                                saveVkProduct(vkProduct);
+                            }))
+                            .then(); // заменяем collectList на then(), т.к. результат нам не нужен
+                })
+                .doOnSuccess(v -> log.info("Successfully synchronized VK products for market ID: {}", vkMarketId))
+                .doOnError(ex -> log.error("Failed to synchronize VK products", ex))
+                .block(); // блокируем, чтобы метод отработал синхронно и вернул управление только после завершения
+    }
+
 
     public VkProductResponseDTO getVkProducts(Long tgUserId, int count, int page) {
         log.info("Request to get VK products for Telegram user ID: {}", tgUserId);
         try {
-//            User user = userService.getUserByTgId(tgUserId);
-            VkAccount activeVkAccount = vkAccountService.getActiveAccount(tgUserId);
-            if (activeVkAccount == null) {
-                throw new IllegalStateException("No active VK account linked to this user");
+            VkProductResponseDTO vkCachedProducts = redisService
+                    .getValue(String.format("products:%s:%d", tgUserId, page), VkProductResponseDTO.class);
+            if (vkCachedProducts != null) {
+                return vkCachedProducts;
             }
-
-            UserMarket activeUserMarket = userMarketService.getActiveUserMarket(activeVkAccount.getId());
-            if (activeUserMarket == null) {
-                throw new IllegalStateException("No active market found for VK account");
-            }
-
-            VkMarket vkMarket = activeUserMarket.getVkMarket();
-            VkProductResponseDTO productsFromDb = getVkProductsFromDatabase(vkMarket, count, page);
-            List<UUID> productIds = productsFromDb.uuids();
-            long totalCount = productsFromDb.count();
-
-            if (productIds.isEmpty()) {
-                log.info("No stored products found. Synchronizing from VK...");
-                List<VkProduct> syncedProducts = getSynchronizedVkProducts(vkMarket, activeVkAccount).block();
-                if (syncedProducts != null && !syncedProducts.isEmpty()) {
-                    return convertVkProductsToIdDto(syncedProducts, totalCount);
-                } else {
-                    log.warn("Synchronization returned empty product list");
-                    return new VkProductResponseDTO(List.of(), 0L);
+            VkAccountCacheDTO cachedVkAccount = redisService
+                    .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
+            log.info("Cached vk account: {}", cachedVkAccount);
+            if (cachedVkAccount == null) {
+                log.info("No found cached vk account");
+                VkAccount activeVkAccount = vkAccountService.getActiveAccount(tgUserId);
+                if (activeVkAccount == null) {
+                    log.warn("No active VK account found for user ID: {}", tgUserId);
+                    throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
                 }
+                cachedVkAccount = new VkAccountCacheDTO(
+                        activeVkAccount.getId(),
+                        activeVkAccount.getAccessToken(),
+                        activeVkAccount.getRefreshToken(),
+                        activeVkAccount.getDeviceId(),
+                        activeVkAccount.getExpiresAt());
+                log.info("Vk account id from db: {}", activeVkAccount.getId());
+                redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), cachedVkAccount);
             }
 
-            log.info("Returning {} products from database", productIds.size());
-            return productsFromDb;
+            VkMarket activeVkMarket;
+            VkMarketCacheDTO cachedMarket = redisService
+                    .getValue(String.format("user:%s:active_vk_market", tgUserId), VkMarketCacheDTO.class);
+            if (cachedMarket == null) {
+                UserMarket userMarket = userMarketService.getActiveUserMarket(cachedVkAccount.id());
+                if (userMarket == null) {
+                    throw new IllegalStateException("No active market found for VK account");
+                }
+                activeVkMarket = userMarket.getVkMarket();
+                VkMarketCacheDTO cacheMarketDTO = new VkMarketCacheDTO(userMarket.getId(),
+                        activeVkMarket.getMarketVkId());
+                redisService.setValue(String.format("user:%s:active_vk_market", tgUserId),
+                        cacheMarketDTO);
+            } else {
+                activeVkMarket = vkMarketService.getMarketById(cachedMarket.marketVkId());
+            }
 
+
+            VkProductResponseDTO productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
+
+
+            if (productsFromDb.products().isEmpty()) {
+                log.info("No stored products found. Synchronizing from VK...");
+                syncProducts(activeVkMarket, cachedVkAccount);
+                productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
+            }
+
+            if (productsFromDb.products().isEmpty()) {
+                log.warn("Synchronization returned empty product list");
+                return new VkProductResponseDTO(List.of(), 1, 0L);
+            }
+            redisService.setValue(String.format("products:%s:%d", tgUserId, page), productsFromDb);
+            log.info("Returning {} products from database", productsFromDb.products().size());
+            return productsFromDb;
         } catch (Exception e) {
             log.error("Failed to fetch VK products for tgUserId={}", tgUserId, e);
             throw new RuntimeException("Unable to retrieve VK products", e);

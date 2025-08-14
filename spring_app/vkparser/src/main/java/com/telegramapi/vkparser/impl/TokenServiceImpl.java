@@ -1,5 +1,6 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
 import com.telegramapi.vkparser.models.VkAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,22 +23,35 @@ public class TokenServiceImpl {
         this.vkAccountService = vkAccountService;
     }
 
-    public Mono<String> getFreshAccessToken(VkAccount vkAccount, String STATE) {
+    //todo нужен целый аккаунт, не обертка! (т.к. сейв идет)
+    public Mono<String> getFreshAccessToken(VkAccountCacheDTO vkDTO, String STATE) {
         return Mono.defer(() -> {
-            if (vkAccount.getExpiresAt().isBefore(LocalDateTime.now().plusSeconds(30))) {
+            if (vkDTO.expiresAt().isBefore(LocalDateTime.now().plusSeconds(30))) {
                 log.info("Access token expired or about to expire. Refreshing...");
                 return vkService
-                        .refreshAccessToken(vkAccount.getRefreshToken(), STATE, vkAccount.getDeviceId())
+                        .refreshAccessToken(vkDTO.refreshToken(), STATE, vkDTO.deviceId())
                         .flatMap(refresh -> {
-                            vkAccount.setAccessToken(refresh.accessToken());
-                            vkAccount.setRefreshToken(refresh.refreshToken());
-                            vkAccount.setExpiresAt(LocalDateTime.now().plusSeconds(refresh.expiresIn()));
-                            blockingService.runBlocking(() -> vkAccountService.saveVkAccount(vkAccount));
-                            log.info("Access token refreshed successfully for VK account ID: {}", vkAccount.getId());
-                            return blockingService.fromBlocking(vkAccount::getAccessToken);
+                            LocalDateTime newExpiresAt = LocalDateTime.now().plusSeconds(refresh.expiresIn());
+
+                            // Обновляем только нужные поля в БД по ID
+                            blockingService.runBlocking(() ->
+                                    vkAccountService.updateVkAccountFields(
+                                            vkDTO.id(),
+                                            refresh.accessToken(),
+                                            refresh.refreshToken(),
+                                            newExpiresAt
+                                    )
+                            );
+//                            vkDTO.setAccessToken(refresh.accessToken());
+//                            vkDTO.setRefreshToken(refresh.refreshToken());
+//                            vkDTO.setExpiresAt(LocalDateTime.now().plusSeconds(refresh.expiresIn()));
+//                            blockingService.runBlocking(() -> vkAccountService.saveVkAccount(vkDTO));
+                            log.info("Access token refreshed successfully for VK account ID: {}", vkDTO.id());
+//                            return blockingService.fromBlocking(vkAccount::getAccessToken);
+                            return Mono.just(refresh.accessToken());
                         });
             } else {
-                return Mono.just(vkAccount.getAccessToken());
+                return Mono.just(vkDTO.accessToken());
             }
         });
     }

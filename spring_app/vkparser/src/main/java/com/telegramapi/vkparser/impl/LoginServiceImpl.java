@@ -105,10 +105,8 @@ public class LoginServiceImpl implements LoginService {
                     );
                 })
                 .flatMap(vkAccount -> {
-                    Mono<VkUserInfoDTO> vkUserInfoMono = vkService
-                            .getUserProfileInfo(accessToken);
-                    Mono<List<VkMarket>> vkMarketsMono = vkService
-                            .getUserMarkets(vkUserId, accessToken);
+                    Mono<VkUserInfoDTO> vkUserInfoMono = userService.getUserInfo(vkAccount);
+                    Mono<List<VkMarket>> vkMarketsMono = userService.getVkMarkets(vkAccount);
 
                     return getUserInfoAndMarkets(
                             tgUserId, user, vkAccount,
@@ -150,7 +148,9 @@ public class LoginServiceImpl implements LoginService {
                 vkAccountService.setActiveVkAccount(vkAccount.getId(), user);
                 vkAccount.setActive(true);
                 VkAccountCacheDTO vkAccountCacheDTO = new VkAccountCacheDTO(
-                        vkAccount.getId(), vkAccount.getAccessToken()
+                        vkAccount.getId(), vkAccount.getAccessToken(),
+                        vkAccount.getRefreshToken(), vkAccount.getDeviceId(),
+                        vkAccount.getExpiresAt()
                 );
                 //todo разобраться почему is_active false
                 redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
