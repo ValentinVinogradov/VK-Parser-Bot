@@ -50,8 +50,7 @@ async def view_first_products(message: Message, state: FSMContext):
     
     
     if current_index is None or \
-        current_page is None or \
-        total_count is None:
+        current_page is None :
         
         logger.info("Первый запуск просмотра товаров — загружаем первую страницу")
 
@@ -59,16 +58,18 @@ async def view_first_products(message: Message, state: FSMContext):
         current_page = 1
         
         await state.update_data(current_index=current_index,
-                                current_page=current_page,
-                                total_count=total_count)
+                                current_page=current_page)
         
         logger.debug(f"Обновили данные в состоянии.")
 
     logger.info("Показ товара (страница: %s, индекс: %s)", current_page, current_index)
     try:
-        product_data = await get_products(message.from_user.id, count, current_page)
+        product_data = await get_products(user_id, count, current_page)
         logger.debug(f"Получили товары: {product_data}")
         products = product_data.get("products", None)
+        
+        
+        
     except Exception as e:
         logger.exception("Ошибка при получении списка товаров: %s", e)
         await message.answer("Не удалось загрузить товары. Попробуйте позже.")
@@ -77,20 +78,26 @@ async def view_first_products(message: Message, state: FSMContext):
     logger.debug("Загружено %d айди товаров на странице %d", len(products), current_page)
     
     try:
-        product = products[current_index-1]
+        local_index = ((current_index - 1) % count) + 1
+        product = products[local_index-1]
     except Exception as e:
         logger.exception("Ошибка при получении карточки товара: %s", e)
         await message.answer("Не удалось загрузить товар. Попробуйте позже.")
         return
     
-    
+    if total_count is None:
+        total_count = product_data.get("count", None)
+        await state.update_data(total_count=total_count)
+    if total_count == 0:
+        await message.answer("⚠️ В выбранном вами магазине нет товаров!")
+        return
     logger.info(f"Получили товар: {product}")
         
     media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
     photo_text = format_product_caption_md(product, current_index)
     media[0].caption = photo_text
     media[0].parse_mode = "MarkdownV2"
-    
+
     await message.answer_media_group(media=media)
     logger.debug("Отправлены фото товара %s", product['id'])
 
@@ -102,17 +109,19 @@ async def view_first_products(message: Message, state: FSMContext):
 async def profile_handler(message: types.Message, state: FSMContext):
     logger.info(f"Нажата кнопка 👤 Профиль")
     
+    user_id = message.from_user.id
+    
     await state.set_state(ProfileState.profile)
     logger.debug(f"Установили состояние profile")
     
-    vk_accounts, vk_markets = await get_user_info(message.from_user.id)
+    vk_accounts, vk_markets = await get_user_info(user_id)
     logger.info(f"Получили данные для отображения.")
     logger.debug(f"Получили данные для отображения. Аккаунты: {vk_accounts}, магазины: {vk_markets}")
     
     logger.debug(f"Полученные аккаунты: {vk_accounts}, магазины: {vk_markets}")
     
     text = await build_profile_text(vk_accounts, vk_markets)
-    await message.answer(text, reply_markup=profile_menu_keyboard())
+    await message.answer(text, reply_markup=profile_menu_keyboard(vk_markets))
 
 
 @main_menu_router.callback_query(F.data == "update_profile")
@@ -130,4 +139,4 @@ async def update_profile_handler(callback: CallbackQuery, state: FSMContext):
     if text == callback.message.text:
         logger.debug(f"Текст совпадает.")
         return
-    await callback.message.edit_text(text, reply_markup=profile_menu_keyboard())
+    await callback.message.edit_text(text, reply_markup=profile_menu_keyboard(vk_markets))

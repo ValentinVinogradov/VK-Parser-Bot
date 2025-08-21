@@ -121,34 +121,35 @@ public class VkProductServiceImpl {
         try {
             VkProductResponseDTO vkCachedProducts = redisService
                     .getValue(String.format("products:%s:%d", tgUserId, page), VkProductResponseDTO.class);
+            log.info("Cached vk products: {}", vkCachedProducts);
             if (vkCachedProducts != null) {
                 return vkCachedProducts;
             }
-            VkAccountCacheDTO cachedVkAccount = redisService
+            VkAccountCacheDTO cacheVkAccount = redisService
                     .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-            log.info("Cached vk account: {}", cachedVkAccount);
-            if (cachedVkAccount == null) {
+            log.info("Cached vk account: {}", cacheVkAccount);
+            if (cacheVkAccount == null) {
                 log.info("No found cached vk account");
                 VkAccount activeVkAccount = vkAccountService.getActiveAccount(tgUserId);
                 if (activeVkAccount == null) {
                     log.warn("No active VK account found for user ID: {}", tgUserId);
                     throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
                 }
-                cachedVkAccount = new VkAccountCacheDTO(
+                cacheVkAccount = new VkAccountCacheDTO(
                         activeVkAccount.getId(),
                         activeVkAccount.getAccessToken(),
                         activeVkAccount.getRefreshToken(),
                         activeVkAccount.getDeviceId(),
                         activeVkAccount.getExpiresAt());
                 log.info("Vk account id from db: {}", activeVkAccount.getId());
-                redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), cachedVkAccount);
+                redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), cacheVkAccount);
             }
 
             VkMarket activeVkMarket;
             VkMarketCacheDTO cachedMarket = redisService
                     .getValue(String.format("user:%s:active_vk_market", tgUserId), VkMarketCacheDTO.class);
             if (cachedMarket == null) {
-                UserMarket userMarket = userMarketService.getActiveUserMarket(cachedVkAccount.id());
+                UserMarket userMarket = userMarketService.getActiveUserMarket(cacheVkAccount.id());
                 if (userMarket == null) {
                     throw new IllegalStateException("No active market found for VK account");
                 }
@@ -167,7 +168,7 @@ public class VkProductServiceImpl {
 
             if (productsFromDb.products().isEmpty()) {
                 log.info("No stored products found. Synchronizing from VK...");
-                syncProducts(activeVkMarket, cachedVkAccount);
+                syncProducts(activeVkMarket, cacheVkAccount);
                 productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
             }
 

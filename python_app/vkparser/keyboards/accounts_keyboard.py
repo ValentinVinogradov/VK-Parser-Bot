@@ -14,8 +14,7 @@ async def account_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-async def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
-    
+async def vk_login_button(tg_id: int) -> InlineKeyboardButton:
     vk_auth_url = getenv("VK_AUTH_URL")
     
     params = {
@@ -29,10 +28,17 @@ async def vk_login_button(tg_id: int) -> InlineKeyboardMarkup:
     }
     
     url = "?".join([vk_auth_url, urlencode(params, quote_via=quote, safe="?=")])
-    
+    return InlineKeyboardButton(text="🔗 Войти через VK", url=url)
+
+
+async def add_account_keyboard(tg_id: int) -> InlineKeyboardMarkup:
+    vk_button = await vk_login_button(tg_id)
+    back_button = InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_account_settings")
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔗 Войти через VK", url=url)]
+            [vk_button],
+            [back_button]
         ]
     )
 
@@ -42,7 +48,6 @@ async def accounts_choose_keyboard(
     mode: str = "activate", 
 ) -> InlineKeyboardMarkup:
     buttons = []
-
     for account in vk_accounts:
         name = account.get("first_name", "Без имени")
         username = account.get("screen_name", "no_username")
@@ -55,12 +60,12 @@ async def accounts_choose_keyboard(
             callback_data = f"activate_vk_account:{account_id}"
         elif mode == "delete":
             emoji = "🗑"
-            callback_data = f"delete_account:{account_id}"
+            callback_data = f"delete_vk_account:{account_id}"
         else:
             raise ValueError(f"Unsupported mode: {mode}")
         button_text = f"{emoji} {name} (@{username})"
         buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
     
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_choose_accounts")])
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_account_settings")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -5,6 +5,7 @@ import com.telegramapi.vkparser.models.VkAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -16,8 +17,8 @@ import java.util.UUID;
 public interface VkAccountRepository extends JpaRepository<VkAccount, UUID> {
 
     @Modifying
-    @Query("UPDATE VkAccount va SET va.isActive = false WHERE va.user = :user AND va.isActive = true")
-    void deactivateVkAccount(User user);
+    @Query("UPDATE VkAccount va SET va.isActive = false WHERE va.user.tgUserId = :tgUserId AND va.isActive = true")
+    void deactivateVkAccount(@Param("tgUserId") Long tgUserId);
 
 
     @Modifying

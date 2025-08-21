@@ -13,6 +13,6 @@ async def market_menu_keyboard(markets: list[dict]) -> InlineKeyboardMarkup:
 
         buttons.append([InlineKeyboardButton(text=button_text, callback_data=callback_data)])
     
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_profile")])
+    buttons.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_profile")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)

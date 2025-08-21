@@ -15,29 +15,35 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class LoginServiceImpl implements LoginService {
+    private final String STATE = System.getenv("VK_STATE");
+    private static final Logger log = LoggerFactory.getLogger(LoginServiceImpl.class);
+
     private final UserServiceImpl userService;
     private final VkAccountServiceImpl vkAccountService;
     private final VkServiceImpl vkService;
     private final BlockingServiceImpl blockingService;
     private final TgBotServiceImpl tgBotService;
-    private static final Logger log = LoggerFactory.getLogger(LoginServiceImpl.class);
     private final RedisServiceImpl redisService;
+    private final TokenServiceImpl tokenService;
 
     public LoginServiceImpl(UserServiceImpl userService,
                             VkAccountServiceImpl vkAccountService,
                             VkServiceImpl vkService,
                             BlockingServiceImpl blockingService,
                             TgBotServiceImpl tgBotService,
-                            RedisServiceImpl redisService) {
+                            RedisServiceImpl redisService,
+                            TokenServiceImpl tokenService) {
         this.userService = userService;
         this.vkAccountService = vkAccountService;
         this.vkService = vkService;
         this.blockingService = blockingService;
         this.tgBotService = tgBotService;
         this.redisService = redisService;
+        this.tokenService = tokenService;
     }
 
     //todo разбить по методам
@@ -145,7 +151,7 @@ public class LoginServiceImpl implements LoginService {
         return blockingService.fromBlocking(() -> {
                 log.debug("Saving VK account for userId={}", user.getTgUserId());
                 vkAccountService.saveVkAccount(vkAccount);
-                vkAccountService.setActiveVkAccount(vkAccount.getId(), user);
+                vkAccountService.setActiveVkAccount(vkAccount.getId(), user.getTgUserId());
                 vkAccount.setActive(true);
                 VkAccountCacheDTO vkAccountCacheDTO = new VkAccountCacheDTO(
                         vkAccount.getId(), vkAccount.getAccessToken(),
@@ -211,5 +217,39 @@ public class LoginServiceImpl implements LoginService {
                         return blockingService.fromBlocking(() -> userService.getUserByTgId(tgUserId));
                     }
                 });
+    }
+
+
+    public Mono<Void> logout(Long tgUserId, UUID userAccountId) {
+        log.info("Deleting account for user ID: {} to account ID: {}", tgUserId, userAccountId);
+        if (userAccountId != null) {
+            VkAccountCacheDTO cacheVkAccount = redisService
+                    .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
+            if (cacheVkAccount == null) {
+                VkAccount vkAccount = vkAccountService.getVkAccountById(userAccountId);
+                cacheVkAccount = new VkAccountCacheDTO(
+                        vkAccount.getId(),
+                        vkAccount.getAccessToken(),
+                        vkAccount.getRefreshToken(),
+                        vkAccount.getDeviceId(),
+                        vkAccount.getExpiresAt());
+            }
+            if (cacheVkAccount.id() == userAccountId) {
+                redisService.deleteKey(String.format("user:%s:active_vk_account", tgUserId));
+            }
+
+            return blockingService.runBlocking(() -> {
+                        vkAccountService.deleteAccountById(userAccountId);
+                        log.info("Account deleted locally: {}", userAccountId);
+                    })
+                    .then(tokenService.getFreshAccessToken(cacheVkAccount, STATE))
+                    .flatMap(accessToken -> {
+                        log.info("Refreshing token for user info completed.");
+                        return vkService.logout(accessToken);
+                    });
+        } else {
+            log.warn("No VK account found for user ID: {}", tgUserId);
+            throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
+        }
     }
 }

@@ -5,21 +5,22 @@ import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import jakarta.validation.constraints.NotBlank;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+import java.util.UUID;
 
 
 @RestController
 @RequestMapping("/vk")
 @Validated
 public class LoginController {
-
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
     private final LoginServiceImpl loginService;
 
     public LoginController(LoginServiceImpl loginService) {
@@ -27,7 +28,7 @@ public class LoginController {
     }
 
     //todo разобраться хули Mono (вроде как и так и так можно хз)
-    @GetMapping("/callback")
+    @GetMapping("/login")
     public Mono<ResponseEntity<VkAccountDTO>> handleVkAccountAuth(
             @RequestParam
             @NotBlank(message = "Code must not be blank")
@@ -50,6 +51,31 @@ public class LoginController {
                     e.printStackTrace();
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                             .body(null));
+                });
+    }
+
+    @DeleteMapping("/logout")
+    public Mono<ResponseEntity<Map<String, String>>> logout(
+            @RequestParam(name = "tg_id") Long tgUserId,
+            @RequestParam(name = "account_id") UUID accountId
+    ) {
+        return loginService.logout(tgUserId, accountId)
+                .then(Mono.fromSupplier(() -> {
+                    Map<String, String> body = Map.of(
+                            "status", "success",
+                            "message", "Successfully logged out VK account!"
+                    );
+                    return ResponseEntity.ok(body);
+                }))
+                .doOnSuccess(r -> log.info("Successfully logout user VK account!"))
+                .onErrorResume(e -> {
+                    e.printStackTrace();
+                    Map<String, String> errorBody = Map.of(
+                            "status", "error",
+                            "message", e.getMessage()
+                    );
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(errorBody));
                 });
     }
 }

@@ -56,17 +56,9 @@ public class UserController {
         }
     }
 
-    @GetMapping("/vk-logout")
-    public ResponseEntity<String> logout(
-            @RequestParam(name = "vk_account_id") UUID vkAccountId
-    ) {
-        try {
-            userService.logoutVkAccount(vkAccountId);
-            return ResponseEntity.ok("Logout successful!");
-        } catch (Exception e) {
-            return  ResponseEntity.badRequest().body(null);
-        }
-    }
+
+
+
 
     @PostMapping("/create-user")
     public ResponseEntity<String> createUser(
@@ -121,6 +113,18 @@ public class UserController {
             return ResponseEntity.ok("Successfully updated active market!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error to update active market");
+        }
+    }
+
+    @PatchMapping("/update-active-account")
+    public ResponseEntity<String> updateActiveAccount(
+            @RequestParam(name = "tg_id") Long tgUserId,
+            @RequestParam(name = "account_id") UUID accountId) {
+        try {
+            userService.updateActiveAccount(tgUserId, accountId);
+            return ResponseEntity.ok("Successfully updated active account!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error to update active account");
         }
     }
 

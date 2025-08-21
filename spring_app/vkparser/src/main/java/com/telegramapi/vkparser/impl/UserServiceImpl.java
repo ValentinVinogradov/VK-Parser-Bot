@@ -161,6 +161,8 @@ public class UserServiceImpl implements UserService {
         return vkMarkets;
     }
 
+
+
     //todo понять почему тут обновляется токены
     public Mono<List<VkMarket>> getVkMarkets(VkAccount vkAccount) {
         log.info("Fetching vk markets from VK for VK ID: {}", vkAccount.getVkUserId());
@@ -320,10 +322,24 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    //todo
-    public void logoutVkAccount(UUID vkAccountId) {
-        VkAccount vkAccount = vkAccountService.getVkAccountById(vkAccountId);
-        String accessToken = vkAccount.getAccessToken();
-        vkService.logout(accessToken);
+    public void updateActiveAccount(Long tgUserId, UUID userAccountId) {
+        log.info("Updating active account for user ID: {} to account ID: {}", tgUserId, userAccountId);
+        if (userAccountId != null) {
+            vkAccountService.setActiveVkAccount(userAccountId, tgUserId);
+            VkAccount vkAccount = vkAccountService.getActiveAccount(tgUserId);
+            VkAccountCacheDTO vkAccountCacheDTO = new VkAccountCacheDTO(
+                vkAccount.getId(),
+                vkAccount.getAccessToken(),
+                vkAccount.getRefreshToken(),
+                vkAccount.getDeviceId(),
+                vkAccount.getExpiresAt());
+            redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
+            //!
+            redisService.deleteKey(String.format("info:%s:vk_markets", tgUserId));
+        } else {
+            log.warn("No active VK account found for user ID: {}", tgUserId);
+            throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
+        }
     }
+
 }

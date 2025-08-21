@@ -20,51 +20,36 @@ product_menu_handler = Router()
 
 @product_menu_handler.callback_query(F.data.startswith("page:"), ProductState.choose_page)
 async def show_pages(callback: CallbackQuery, state: FSMContext):
+    
     logger.info(f"Нажата кнопка с выбором страницы")
     await callback.answer("")
     await callback.message.delete()
     await state.set_state(ProductState.main_show)
     logger.info(f"Установлено состояние main_show")
     
+    user_id = callback.from_user.id
+    
     data = await state.get_data()
     page = int(callback.data.split(":")[1])
     count = 5
-    first_index = (page - 1) * count + 1
+    first_page_index = (page - 1) * count + 1
     current_index = data.get("current_index", None)
     current_page = data.get("current_page", None)
-    product_list = data.get("product_list", None)
     total_count = data.get("total_count", None)
-    if current_index == first_index:
+    if current_index == first_page_index:
         return
-    if current_page == page:
-        product = await get_product(product_list[str(first_index)])
-        await state.update_data(current_index=first_index)
-        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
-        await callback.message.answer_media_group(media=media)
+    product_data = await get_products(user_id, count, page)
+    products = product_data.get("products", None)
+    product = products[0]
+    await state.update_data(current_index=first_page_index,
+                            current_page=page)
+    media = [InputMediaPhoto(media=url) for url in product.get('photo_urls', None)]
+    photo_text = format_product_caption_md(product, first_page_index)
+    media[0].caption = photo_text
+    media[0].parse_mode = "MarkdownV2"
+    await callback.message.answer_media_group(media=media)
         
-        await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(first_index, total_count))
-
-    else:
-        product_data = await get_products(callback.from_user.id, 
-                                      count, 
-                                      page)
-        product_ids = product_data.get("uuids", [])
-        product_list = {
-            str((page - 1) * count + i + 1): uuid
-            for i, uuid in enumerate(product_ids)
-            }
-        product = await get_product(product_list[str(first_index)])
-        await state.update_data(product_list=product_list, 
-                                current_index=first_index,
-                                current_page=page,
-                                current_set=None)
-        media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
-        photo_text = format_product_caption_md(product, first_index)
-        media[0].caption = photo_text
-        media[0].parse_mode = "MarkdownV2"
-        await callback.message.answer_media_group(media=media)
-            
-        await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(first_index, total_count))
+    await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(first_page_index, total_count))
 
     
     #TODO: может пригодится
@@ -76,34 +61,36 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ProductState.main_show)
     await callback.answer("")
     await callback.message.delete()
+    user_id = callback.from_user.id
     count = 5
     new_index = int(callback.data.split(":")[1])
+    logger.info(f"Новый индекс товара: {new_index}")
 
     data = await state.get_data()
-    product_list = data.get("product_list", {})
     
-    total_count = data.get("total_count", 0)
-    current_index = data.get("current_index", 1)
-    current_page = data.get("current_page", 1)
+    total_count = data.get("total_count", None)
+    current_index = data.get("current_index", None)
+    current_page = data.get("current_page", None)
     
+    #TODO можно локальный индекс тоже в кеш засунуть и потом проверку на него
+    
+    current_index = new_index
+    current_page = ((current_index - 1) // count) + 1
+    logger.info(f"Текущая страница: {current_page}")
+    
+    local_index = ((current_index - 1) % count) + 1
+    logger.info(f"Локальный индекс товара: {local_index}")
 
-    if str(new_index) not in product_list.keys():
-        new_page = current_page - 1 if new_index < current_index else current_page + 1
+    product_data = await get_products(user_id, count, current_page)
+    products = product_data.get("products", None)
+    logger.info(f"Товарная инфа: {products}")
 
-        product_data = await get_products(callback.from_user.id, count, new_page)
-        product_ids = product_data.get("uuids", [])
-        product_list = {
-            str((new_page - 1) * count + i + 1): uuid
-            for i, uuid in enumerate(product_ids)
-        }
-
-        await state.update_data(current_page=new_page)
 
     await state.update_data(
-        product_list=product_list,
-        current_index=new_index
+        current_index=current_index,
+        current_page=current_page
     )
-    product = await get_product(product_list[str(new_index)])
+    product = products[local_index-1]
 
     media = [InputMediaPhoto(media=url) for url in product['photo_urls']]
     media[0].caption = format_product_caption_md(product, new_index)

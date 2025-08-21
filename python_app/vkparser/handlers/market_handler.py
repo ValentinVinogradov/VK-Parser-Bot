@@ -65,22 +65,17 @@ async def select_active_market(callback: CallbackQuery, state: FSMContext):
     
     
     
-    vk_markets_raw = await redis.get(f"info:{user_id}:vk_markets")
-    vk_markets = json.loads(vk_markets_raw)
-    logger.info(f"Магазины из кеша: {vk_markets}")
-    
-    if vk_markets is None or len(vk_markets) == 0:
-        vk_markets = await get_user_markets(user_id)
-        logger.info(f"Магазины из бд: {vk_markets}")
+    vk_markets = await get_user_markets(user_id)
+    logger.info(f"Магазины: {vk_markets}")
     
     for market in vk_markets:
         logger.debug(f"Цикл обновления активных магазинов.")
-        if market.get("is_active") == True:
+        if market.get("is_active", None) == True:
             active_market_id = market.get("id")
             if active_market_id == market_id:
                 logger.debug(f"Магазины совпадают с данными из базы данных.")
                 return
-        if market.get("id") == market_id:
+        if market.get("id", None) == market_id:
             logger.debug(f"Выбран активный магазин: {market_id}")
             market["is_active"] = True
             logger.debug(f"Обновили активный магазин в кеше.")

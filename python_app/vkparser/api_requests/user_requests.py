@@ -78,6 +78,20 @@ async def update_active_market(tg_id, market_id):
                 return False
 
 
+async def update_active_account(tg_id, account_id):
+    url = BASE_URL + f'/users/update-active-account?tg_id={tg_id}&account_id={account_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.patch(url) as response:
+            data = await response.json()
+            logger.debug(f"Response url: {url}")
+            logger.debug(f"Response status: {response.status}")
+            logger.debug(f"Response data: {data}")
+            if response.status == 200:
+                return
+            else:
+                return False
+
+
 async def check_active_vk(tg_id: int):
     url = BASE_URL + f'/users/check-active-account?tg_id={tg_id}'
     async with aiohttp.ClientSession() as session:
@@ -118,3 +132,17 @@ async def get_user_markets(tg_id):
                 return data
             else:
                 return None
+
+
+async def delete_user(tg_id, account_id):
+    url = BASE_URL + f'/vk/logout?tg_id={tg_id}&account_id={account_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.delete(url) as response:
+            data = await response.json()
+            logger.debug(f"Response url: {url}")
+            logger.debug(f"Response status: {response.status}")
+            logger.debug(f"Response data: {data}")
+            if response.status == 200:
+                return
+            else:
+                return False

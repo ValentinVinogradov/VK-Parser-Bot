@@ -103,11 +103,16 @@ public class VkAccountServiceImpl implements VkAccountService {
     }
 
     @Transactional
-    public void setActiveVkAccount(UUID vkAccountId, User user) {
-        log.info("Switching active VK account to ID: {} for user ID: {}", vkAccountId, user.getTgUserId());
-        vkAccountRepository.deactivateVkAccount(user);
+    public void deleteAccountById(UUID id) {
+        vkAccountRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void setActiveVkAccount(UUID vkAccountId, Long tgUserId) {
+        log.info("Switching active VK account to ID: {} for user ID: {}", vkAccountId, tgUserId);
+        vkAccountRepository.deactivateVkAccount(tgUserId);
         vkAccountRepository.activateVkAccount(vkAccountId);
-        log.info("Activated VK account ID: {} for user ID: {}", vkAccountId, user.getTgUserId());
+        log.info("Activated VK account ID: {} for user ID: {}", vkAccountId, tgUserId);
     }
 
     public List<VkAccount> getAllUserVkAccounts(Long tgUserId) {
