@@ -2,6 +2,7 @@ package com.telegramapi.vkparser.models;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,9 @@ public class User {
     @Id
     @Column(name = "tg_user_id", unique = true, nullable = false)
     private Long tgUserId;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VkAccount> vkAccounts = new ArrayList<>();
 
 
     public Long getTgUserId() {

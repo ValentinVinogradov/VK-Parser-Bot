@@ -8,6 +8,8 @@ import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.models.VkProduct;
 import com.telegramapi.vkparser.services.VkService;
+import com.telegramapi.vkparser.utils.VkParsedMarket;
+import com.telegramapi.vkparser.utils.VkParsedProduct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -114,7 +116,7 @@ public class VkServiceImpl implements VkService {
                     }
                 })
                 .doOnError(error -> log.error("VK logout failed: {}", error.getMessage(), error))
-                .then(); // завершает как Mono<Void>
+                .then();
     }
 
     public Mono<List<VkProduct>> getProducts(String accessToken, Long vkMarketId) {
@@ -140,47 +142,9 @@ public class VkServiceImpl implements VkService {
 
                 return Flux.fromIterable(itemsNode)
                     .map(item -> {
-                        long vkProductId = item.path("id").asLong();
-                        String title = item.path("title").asText();
-                        String category = item.path("category").path("name").asText();
-                        String description = item.path("description").asText();
-                        String price = item.path("price").path("text").asText();
-                        List<String> photoUrls = new ArrayList<>();
-                        for (JsonNode photo : item.path("photos")) {
-                            for (JsonNode size : photo.path("sizes")) {
-                                if ("x".equals(size.path("type").asText())) {
-                                    photoUrls.add(size.path("url").asText());
-                                }
-                            }
-                        }
+                        VkParsedProduct parsedProduct = parseVkProduct(item);
 
-                        int availability = item.path("availability").asInt();
-                        int stockQuantity = item.path("stock_amount").asInt();
-                        int likesCount = item.path("likes").path("count").asInt();
-                        int repostsCount = item.path("reposts").path("count").asInt();
-                        int reviewsCount = item.path("item_rating").path("reviews_count").asInt();
-                        int viewsCount = item.path("views_count").asInt();
-                        double rating = item.path("item_rating").path("rating").asDouble();
-                        long timestamp = item.path("date").asLong();
-                        Instant createdAt = Instant.ofEpochSecond(timestamp);
-
-                        VkProduct vkProduct = new VkProduct();
-                        vkProduct.setVkProductId(vkProductId);
-                        vkProduct.setTitle(title);
-                        vkProduct.setCategory(category);
-                        vkProduct.setDescription(description);
-                        vkProduct.setPrice(price);
-                        vkProduct.setPhotoUrls(photoUrls);
-                        vkProduct.setAvailability(availability);
-                        vkProduct.setStockQuantity(stockQuantity);
-                        vkProduct.setLikesCount(likesCount);
-                        vkProduct.setRepostCount(repostsCount);
-                        vkProduct.setReviewsCount(reviewsCount);
-                        vkProduct.setViewsCount(viewsCount);
-                        vkProduct.setRating(rating);
-                        vkProduct.setCreatedAt(createdAt);
-
-                        return vkProduct;
+                        return buildVkProduct(parsedProduct);
                     })
                     .collectList()
                     .doOnSubscribe(s ->
@@ -220,17 +184,8 @@ public class VkServiceImpl implements VkService {
 
                     return Flux.fromIterable(itemsNode)
                             .map(item -> {
-                                long vkMarketId = item.path("id").asLong();
-                                int membersCount = item.path("members_count").asInt();
-                                String vkMarketName = item.path("name").asText();
-                                String vkMarketScreenName = item.path("screen_name").asText();
-
-                                VkMarket vkMarket = new VkMarket();
-                                vkMarket.setMarketName(vkMarketName);
-                                vkMarket.setMarketVkId(vkMarketId);
-                                vkMarket.setMembersCount(membersCount);
-                                vkMarket.setMarketUrl(VK_URL + "/" + vkMarketScreenName);
-                                return vkMarket;
+                                VkParsedMarket parsedMarket =  parseVkMarket(item);
+                                return buildVkMarket(parsedMarket);
                             })
                             .collectList()
                             .doOnSubscribe(s ->
@@ -263,4 +218,79 @@ public class VkServiceImpl implements VkService {
                 .doOnSuccess(vkUserInfoDTO ->
                         log.info("Successfully fetched VK user profile info: screenName={}", vkUserInfoDTO.screenName()));
     }
+
+
+    private static VkParsedProduct parseVkProduct(JsonNode item) {
+        long vkProductId = item.path("id").asLong();
+        String title = item.path("title").asText();
+        String category = item.path("category").path("name").asText();
+        String description = item.path("description").asText();
+        String price = item.path("price").path("text").asText();
+
+        List<String> photoUrls = new ArrayList<>();
+        for (JsonNode photo : item.path("photos")) {
+            for (JsonNode size : photo.path("sizes")) {
+                if ("x".equals(size.path("type").asText())) {
+                    photoUrls.add(size.path("url").asText());
+                }
+            }
+        }
+
+        int availability = item.path("availability").asInt();
+        int stockQuantity = item.path("stock_amount").asInt();
+        int likesCount = item.path("likes").path("count").asInt();
+        int repostsCount = item.path("reposts").path("count").asInt();
+        int reviewsCount = item.path("item_rating").path("reviews_count").asInt();
+        int viewsCount = item.path("views_count").asInt();
+        double rating = item.path("item_rating").path("rating").asDouble();
+        long timestamp = item.path("date").asLong();
+        Instant createdAt = Instant.ofEpochSecond(timestamp);
+
+        return new VkParsedProduct(
+                vkProductId, title, category, description, price,
+                photoUrls, availability, stockQuantity,
+                likesCount, repostsCount, reviewsCount, viewsCount,
+                rating, createdAt
+        );
+    }
+
+    private static VkProduct buildVkProduct(VkParsedProduct parsed) {
+        VkProduct vkProduct = new VkProduct();
+        vkProduct.setVkProductId(parsed.vkProductId());
+        vkProduct.setTitle(parsed.title());
+        vkProduct.setCategory(parsed.category());
+        vkProduct.setDescription(parsed.description());
+        vkProduct.setPrice(parsed.price());
+        vkProduct.setPhotoUrls(parsed.photoUrls());
+        vkProduct.setAvailability(parsed.availability());
+        vkProduct.setStockQuantity(parsed.stockQuantity());
+        vkProduct.setLikesCount(parsed.likesCount());
+        vkProduct.setRepostCount(parsed.repostsCount());
+        vkProduct.setReviewsCount(parsed.reviewsCount());
+        vkProduct.setViewsCount(parsed.viewsCount());
+        vkProduct.setRating(parsed.rating());
+        vkProduct.setCreatedAt(parsed.createdAt());
+        return vkProduct;
+    }
+
+    private static VkParsedMarket parseVkMarket(JsonNode item) {
+        long vkMarketId = item.path("id").asLong();
+        int membersCount = item.path("members_count").asInt();
+        String vkMarketName = item.path("name").asText();
+        String vkMarketScreenName = item.path("screen_name").asText();
+
+        return new VkParsedMarket(vkMarketId, membersCount, vkMarketName, vkMarketScreenName);
+    }
+
+    private VkMarket buildVkMarket(VkParsedMarket parsed) {
+        VkMarket vkMarket = new VkMarket();
+        vkMarket.setMarketName(parsed.vkMarketName());
+        vkMarket.setMarketVkId(parsed.vkMarketId());
+        vkMarket.setMembersCount(parsed.membersCount());
+        vkMarket.setMarketUrl(VK_URL + "/" + parsed.vkMarketScreenName());
+        return vkMarket;
+    }
 }
+
+
+

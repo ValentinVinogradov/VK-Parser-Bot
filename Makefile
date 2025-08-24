@@ -1,4 +1,4 @@
-NEEDS_JAR_COMMANDS = rebuild rebuild-c rebuild-o rebuild-o-c reset restart
+NEEDS_JAR_COMMANDS = rebuild rebuild-c rebuild-o rebuild-o-c reset
 
 build-jar:
 	cd spring_app/vkparser && ./gradlew bootJar

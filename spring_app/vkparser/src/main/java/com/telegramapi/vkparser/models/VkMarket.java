@@ -2,6 +2,8 @@ package com.telegramapi.vkparser.models;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -23,6 +25,12 @@ public class VkMarket {
 
     @Column(name = "market_url", nullable = false)
     private String marketUrl;
+
+    @OneToMany(mappedBy = "vkMarket", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserMarket> userMarkets = new ArrayList<>();
+
+    @OneToMany(mappedBy = "vkMarket", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VkProduct> vkProducts = new ArrayList<>();
 
 
     public UUID getId() {

@@ -3,7 +3,7 @@ from typing import Callable, Hashable
 
 
 class DebounceManager:
-    def __init__(self, delay: float = 5.0):
+    def __init__(self, delay: float = 3.0):
         self._tasks: dict[Hashable, asyncio.Task] = {}
         self._delay = delay
 

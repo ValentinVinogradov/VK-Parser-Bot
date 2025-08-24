@@ -3,6 +3,7 @@ package com.telegramapi.vkparser.impl;
 import java.time.Duration;
 import java.util.List;
 
+import com.telegramapi.vkparser.services.RedisService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
-public class RedisServiceImpl {
+public class RedisServiceImpl implements RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper redisObjectMapper;
@@ -46,8 +47,13 @@ public class RedisServiceImpl {
         redisTemplate.delete(key);
     }
 
+    public void deleteInfoCache(Long tgUserId) {
+        deleteKey(String.format("info:%s:vk_markets", tgUserId));
+        deleteKey(String.format("info:%s:vk_accounts", tgUserId));
+    }
+
     public boolean hasKey(String key) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        return redisTemplate.hasKey(key);
     }
 
     public void setValueWithTTL(String key, Object value, long ttlSeconds) {

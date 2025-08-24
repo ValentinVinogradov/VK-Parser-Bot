@@ -58,7 +58,11 @@ async def add_vk_account(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     await state.set_state(AccountState.choose_page)
     user_id = callback.from_user.id
-    await callback.message.answer("Войдите в другой аккаунт:", reply_markup=await add_account_keyboard(user_id))
+    vk_accounts = await get_user_vk_accounts(user_id)
+    if len(vk_accounts) > 2:
+        await callback.message.answer("Нельзя привязать более 3-х аккаунтов:", reply_markup=await add_account_keyboard(user_id))
+    else:
+        await callback.message.answer("Войдите в другой аккаунт:", reply_markup=await add_account_keyboard(user_id))
 
 
 @account_router.callback_query(F.data == "delete_vk_account", ProfileState.configure_vk_account)

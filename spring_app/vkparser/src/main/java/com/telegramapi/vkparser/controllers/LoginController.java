@@ -2,6 +2,7 @@ package com.telegramapi.vkparser.controllers;
 
 import com.telegramapi.vkparser.dto.VkAccountDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
+import com.telegramapi.vkparser.enums.ResponseStatusEnum;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import jakarta.validation.constraints.NotBlank;
 
@@ -27,7 +28,6 @@ public class LoginController {
         this.loginService = loginService;
     }
 
-    //todo разобраться хули Mono (вроде как и так и так можно хз)
     @GetMapping("/login")
     public Mono<ResponseEntity<VkAccountDTO>> handleVkAccountAuth(
             @RequestParam
@@ -62,7 +62,7 @@ public class LoginController {
         return loginService.logout(tgUserId, accountId)
                 .then(Mono.fromSupplier(() -> {
                     Map<String, String> body = Map.of(
-                            "status", "success",
+                            "status", ResponseStatusEnum.SUCCESS.toString(),
                             "message", "Successfully logged out VK account!"
                     );
                     return ResponseEntity.ok(body);
@@ -71,7 +71,7 @@ public class LoginController {
                 .onErrorResume(e -> {
                     e.printStackTrace();
                     Map<String, String> errorBody = Map.of(
-                            "status", "error",
+                            "status", ResponseStatusEnum.ERROR.toString(),
                             "message", e.getMessage()
                     );
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

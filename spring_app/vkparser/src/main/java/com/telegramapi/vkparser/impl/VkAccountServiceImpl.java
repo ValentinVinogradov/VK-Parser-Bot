@@ -1,5 +1,6 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkAccount;
 import com.telegramapi.vkparser.repositories.VkAccountRepository;
@@ -18,9 +19,11 @@ public class VkAccountServiceImpl implements VkAccountService {
     private static final Logger log = LoggerFactory.getLogger(VkAccountServiceImpl.class);
 
     private final VkAccountRepository vkAccountRepository;
+    private final RedisServiceImpl redisService;
 
-    public VkAccountServiceImpl(VkAccountRepository vkAccountRepository) {
+    public VkAccountServiceImpl(VkAccountRepository vkAccountRepository, RedisServiceImpl redisService) {
         this.vkAccountRepository = vkAccountRepository;
+        this.redisService = redisService;
     }
 
     public VkAccount getVkAccountById(UUID id) {
@@ -131,5 +134,61 @@ public class VkAccountServiceImpl implements VkAccountService {
         boolean exists = vkAccountRepository.existsByUser_TgUserId(tgUserId);
         log.info("Vk account exists for user ID {}: {}", tgUserId, exists);
         return exists;
+    }
+
+    public UUID getActiveAccountId(Long tgUserId) {
+        UUID activeVkAccountId;
+        VkAccountCacheDTO cachedVkAccount = redisService
+                .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
+        log.info("Cached vk account: {}", cachedVkAccount);
+        if (cachedVkAccount != null) {
+            log.info("Found cache vk account");
+            activeVkAccountId = cachedVkAccount.id();
+            log.info("Cached vk account id: {}", activeVkAccountId);
+        } else {
+            log.info("No found cached vk account");
+            activeVkAccountId = getActiveAccount(tgUserId).getId();
+            log.info("Vk account id from db: {}", activeVkAccountId);
+        }
+
+        return activeVkAccountId;
+    }
+
+    public VkAccountCacheDTO createVkCacheAccount(Long tgUserId) {
+        VkAccountCacheDTO cacheVkAccount = redisService
+                .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
+        log.info("Cached vk account: {}", cacheVkAccount);
+        if (cacheVkAccount == null) {
+            log.info("No found cached vk account");
+            VkAccount activeVkAccount = getActiveAccount(tgUserId);
+            if (activeVkAccount == null) {
+                log.warn("No active VK account found for user ID: {}", tgUserId);
+                throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
+            }
+            cacheVkAccount = createAccountCacheDTO(activeVkAccount);
+            log.info("Vk account id from db: {}", activeVkAccount.getId());
+        }
+        return cacheVkAccount;
+    }
+
+    public VkAccountCacheDTO createAccountCacheDTO(VkAccount activeVkAccount) {
+        VkAccountCacheDTO cacheVkAccount;
+        cacheVkAccount = new VkAccountCacheDTO(
+                activeVkAccount.getId(),
+                activeVkAccount.getAccessToken(),
+                activeVkAccount.getRefreshToken(),
+                activeVkAccount.getDeviceId(),
+                activeVkAccount.getExpiresAt());
+        return cacheVkAccount;
+    }
+
+    public VkAccountCacheDTO getVkAccountCacheDTO(Long tgUserId, UUID userAccountId) {
+        VkAccountCacheDTO cacheVkAccount = redisService
+                .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
+        if (cacheVkAccount == null) {
+            VkAccount vkAccount = getVkAccountById(userAccountId);
+            cacheVkAccount = createAccountCacheDTO(vkAccount);
+        }
+        return cacheVkAccount;
     }
 }

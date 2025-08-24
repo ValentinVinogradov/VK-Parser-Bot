@@ -25,45 +25,31 @@ class MainMenuMiddleware(BaseMiddleware):
         state: FSMContext = data.get("state")
         
         if event.text == "👤 Профиль":
-            if await redis.get(f"user:{user_id}:active_vk_account") is None:
-                if not await self.exists_active_vk(user_id):
-                    if len(await self.get_all_vk_accounts(user_id)) < 1:
-                        await event.answer("🚫 Вы не вошли ни в один VK аккаунт!", 
-                                        reply_markup=await vk_login_button(user_id))
-                    else:
-                        await event.answer("Войдите в аккаунт:")
-                        # await event.answer("Войдите в аккаунт:", reply_markup=accounts_choose_keyboard("activate"))
-                        #TODO: состояние
-                        # await state.set_state(AccountState.choose_page)
-                    return
+            if not await self.exists_active_vk(user_id):
+                return await self.__show_auth_message(event, user_id, state)
             logger.info("Пользователь вошел")
             return await handler(event, data)
 
         elif event.text == "🛍 Просмотр товаров":
-            if await redis.get(f"user:{user_id}:active_vk_account") is None:
-                if not await self.exists_active_vk(user_id):
-                    if len(await self.get_all_vk_accounts(user_id)) < 1:
-                        await event.answer("🚫 Вы не вошли ни в один VK аккаунт!", 
-                                        reply_markup=await vk_login_button(user_id))
-                    else:
-                        await event.answer("Войдите в аккаунт:", reply_markup=accounts_choose_keyboard("activate"))
-                        #TODO: состояние
-                        # await state.set_state(AccountState.choose_page)
-                    return
-            vk_account_data_raw = await redis.get(f"user:{user_id}:active_vk_account")
-            vk_account_data = json.loads(vk_account_data_raw)
-            vk_account_id = vk_account_data.get("id", None)
-            # if await redis.get(f"user:{vk_account_id}:active_vk_market") is None:
-            if await redis.get(f"user:{user_id}:active_vk_market") is None:
-                if not await self.is_active_market(user_id):
-                    await event.answer("🔒 У вас пока нет активного магазина.\nВыберите его в настройках, чтобы увидеть товары!")
-                    return
+            if not await self.exists_active_vk(user_id):
+                return await self.__show_auth_message(event, user_id, state)
+            if not await self.is_active_market(user_id):
+                await event.answer("🔒 У вас пока нет активного магазина.\nВыберите его в настройках, чтобы увидеть товары!")
+                return
             return await handler(event, data)
 
 
+    async def __show_auth_message(self, event, user_id, state):
+        vk_accounts = await self.get_all_vk_accounts(user_id)
+        if len(vk_accounts) < 1:
+            await event.answer("🚫 Вы не вошли ни в один VK аккаунт!", 
+                            reply_markup=await vk_login_button(user_id))
+        else:
+            await state.set_state(AccountState.choose_page)
+            await event.answer("Войдите в аккаунт:", reply_markup=await accounts_choose_keyboard(vk_accounts, "activate"))
+    
     async def exists_active_vk(self, tg_id) -> bool:
         return await check_active_vk(tg_id)
-    
     
     
     async def is_active_market(self, user_id: int) -> bool:

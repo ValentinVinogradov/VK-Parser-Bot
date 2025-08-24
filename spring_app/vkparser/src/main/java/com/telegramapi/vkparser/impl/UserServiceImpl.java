@@ -61,11 +61,18 @@ public class UserServiceImpl implements UserService {
 
         return Flux.fromIterable(vkMarkets)
                 .flatMap(vkMarket ->
-                        blockingService.runBlocking(() -> vkMarketService.saveVkMarket(vkMarket))
-                                .thenReturn(vkMarket)
-                                .flatMap(savedVkMarket -> {
-                                    UserMarket userMarket = userMarketService.createUserMarket(vkAccount, savedVkMarket);
-                                    return blockingService.runBlocking(() -> userMarketService.saveUserMarket(userMarket));
+                        blockingService.fromBlocking(() -> vkMarketService.existsByVkId(vkMarket.getMarketVkId()))
+                                .flatMap(exists -> {
+                                    if (exists) {
+                                        VkMarket vkMarketToSync = vkMarketService.getMarketById(vkMarket.getMarketVkId());
+                                        return blockingService.runBlocking(() -> createAndSaveUserMarket(vkAccount, vkMarketToSync));
+
+                                    } else {
+                                        return blockingService.runBlocking(() -> {
+                                            vkMarketService.saveVkMarket(vkMarket);
+                                            createAndSaveUserMarket(vkAccount, vkMarket);
+                                        });
+                                    }
                                 })
                 )
                 .doOnSubscribe(sub -> log.info("User market synchronization initiated for VK account ID: {}", vkAccount.getId()))
@@ -76,6 +83,12 @@ public class UserServiceImpl implements UserService {
                 .then();
     }
 
+    private void createAndSaveUserMarket(VkAccount vkAccount, VkMarket vkMarket) {
+        UserMarket userMarket = userMarketService
+                .createUserMarket(vkAccount, vkMarket);
+        userMarketService.saveUserMarket(userMarket);
+    }
+
     @Override
     public Boolean existsUserByTgId(Long tgUserId) {
         boolean exists = userRepository.existsByTgUserId(tgUserId);
@@ -83,6 +96,7 @@ public class UserServiceImpl implements UserService {
         return exists;
     }
 
+    //todo
     public List<VkAccountDTO> getAllUserVkAccounts(Long tgUserId) {
         log.info("Fetching all VK accounts for user ID: {}", tgUserId);
         List<VkAccountDTO> vkAccounts = redisService.getListValue(
@@ -105,10 +119,6 @@ public class UserServiceImpl implements UserService {
                 ))
                 .toList();
             log.info("Vk accounts from db: {}", vkAccounts);
-
-                //todo надо ли при подгрузке профиля (акков) заново просчитывать activeAccount
-                // VkAccountCacheDTO cachedVkAccount = (VkAccountCacheDTO) redisService.getValue(String.format("user:%s:active_vk_account", tgUserId));
-                // if (cachedVkAccount != null)
             if (!vkAccounts.isEmpty()) {
                 redisService.setValue(String.format("info:%s:vk_accounts", tgUserId), vkAccounts);
                 log.debug("Vk accounts added to cache");
@@ -117,6 +127,7 @@ public class UserServiceImpl implements UserService {
         return vkAccounts;
     }
 
+    //todo
     public List<VkMarketDTO> getAllUserMarkets(Long tgUserId) {
         log.info("Fetching VK markets for user ID: {}", tgUserId);
         List<VkMarketDTO> vkMarkets = redisService.
@@ -124,19 +135,7 @@ public class UserServiceImpl implements UserService {
         log.info("Cached vk markets: {}", vkMarkets);
         if (vkMarkets == null || vkMarkets.isEmpty()) {
             log.info("No found cached vk markets");
-            UUID activeAccountId;
-            VkAccountCacheDTO cachedVkAccount = redisService
-                .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-            log.info("Cached vk account: {}", cachedVkAccount);
-            if (cachedVkAccount != null) {
-                log.info("Found cache vk account");
-                activeAccountId = cachedVkAccount.id();
-                log.info("Cached vk account id: {}", activeAccountId);
-            } else {
-                log.info("No found cached vk account");
-                activeAccountId = vkAccountService.getActiveAccount(tgUserId).getId();
-                log.info("Vk account id from db: {}", activeAccountId);
-            }
+            UUID activeAccountId = vkAccountService.getActiveAccountId(tgUserId);
             if (activeAccountId != null) {
                 List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeAccountId);
                 vkMarkets = userMarkets
@@ -154,7 +153,7 @@ public class UserServiceImpl implements UserService {
                     log.info("Vk accounts added to cache");
                 } 
             } else {
-                log.warn("No active VK account found for user ID: {}", tgUserId);
+                log.warn("No active VK account found for user ID to get user markets: {}", tgUserId);
                 throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
             }
         }
@@ -162,8 +161,6 @@ public class UserServiceImpl implements UserService {
     }
 
 
-
-    //todo понять почему тут обновляется токены
     public Mono<List<VkMarket>> getVkMarkets(VkAccount vkAccount) {
         log.info("Fetching vk markets from VK for VK ID: {}", vkAccount.getVkUserId());
         Long vkUserId = vkAccount.getVkUserId();
@@ -213,7 +210,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public FullUserInfoDTO getFullUserInfo(Long tgUserId) {
         log.info("Fetching full user info for Telegram ID: {}", tgUserId);
-//        User user = getUserByTgId(tgUserId);
         
         
         List<VkAccountDTO> vkAccounts = getAllUserVkAccounts(tgUserId);
@@ -240,10 +236,11 @@ public class UserServiceImpl implements UserService {
             redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
             return true;
         }
+        log.warn("No active VK account found for user ID: {}", tgUserId);
         return false;
     }
 
-    //todo можно акк с кеша получить, передав тг айди
+
     public Boolean checkUserActiveMarket(Long tgUserId) {
         log.debug("Checking active market for user ID: {}", tgUserId);
         VkMarketCacheDTO cachedVkMarket = redisService
@@ -252,19 +249,7 @@ public class UserServiceImpl implements UserService {
             return true;
         }
 
-        UUID activeVkAccountId;
-        VkAccountCacheDTO cachedVkAccount = redisService
-            .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-        log.info("Cached vk account: {}", cachedVkAccount);
-        if (cachedVkAccount != null) {
-            log.info("Found cache vk account");
-            activeVkAccountId = cachedVkAccount.id();
-            log.info("Cached vk account id: {}", activeVkAccountId);
-        } else {
-            log.info("No found cached vk account");
-            activeVkAccountId = vkAccountService.getActiveAccount(tgUserId).getId();
-            log.info("Vk account id from db: {}", activeVkAccountId);
-        }
+        UUID activeVkAccountId = vkAccountService.getActiveAccountId(tgUserId);
         if (activeVkAccountId != null) {
             UserMarket userMarket = userMarketService.getActiveUserMarket(activeVkAccountId);
             if (userMarket != null) {
@@ -277,37 +262,14 @@ public class UserServiceImpl implements UserService {
             }
             return false;
         } else {
-            log.warn("No active VK account found for user ID: {}", tgUserId);
+            log.warn("No active VK account found for user ID to check active market: {}", tgUserId);
             throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
         }
     }
 
-    // public Boolean checkUserActiveMarket(Long tgUserId) {
-    //     log.debug("Checking active market for Telegram user ID: {}", tgUserId);
-    //     VkAccount activeAccount = vkAccountService.getActiveAccount(tgUserId);
-    //     if (activeAccount == null) {
-    //         log.warn("No active VK market found for user ID: {}", tgUserId);
-    //         return false;
-    //     }
-    //     UUID vkAccountId = activeAccount.getId();
-    //     return userMarketService.getActiveUserMarket(vkAccountId) != null;
-    // }
-
     public void updateActiveMarket(Long tgUserId, UUID userMarketId) {
         log.info("Updating active market for user ID: {} to market ID: {}", tgUserId, userMarketId);
-        UUID activeVkAccountId;
-        VkAccountCacheDTO cachedVkAccount = redisService
-            .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-        log.info("Cached vk account: {}", cachedVkAccount);
-        if (cachedVkAccount != null) {
-            log.info("Found cache vk account");
-            activeVkAccountId = cachedVkAccount.id();
-            log.info("Cached vk account id: {}", activeVkAccountId);
-        } else {
-            log.info("No found cached vk account");
-            activeVkAccountId = vkAccountService.getActiveAccount(tgUserId).getId();
-            log.info("Vk account id from db: {}", activeVkAccountId);
-        }
+        UUID activeVkAccountId = vkAccountService.getActiveAccountId(tgUserId);
         if (activeVkAccountId != null) {
             userMarketService.setActiveUserMarket(activeVkAccountId, userMarketId);
             UserMarket activeUserMarket = userMarketService.getActiveUserMarket(activeVkAccountId);
@@ -317,7 +279,7 @@ public class UserServiceImpl implements UserService {
             redisService.setValue(String.format("user:%s:active_vk_market", tgUserId), vkMarketCacheDTO);
             log.info("New active vk market insert in cache");
         } else {
-            log.warn("No active VK account found for user ID: {}", tgUserId);
+            log.warn("No active VK account found for user ID to update active market: {}", tgUserId);
             throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
         }
     }
@@ -334,10 +296,9 @@ public class UserServiceImpl implements UserService {
                 vkAccount.getDeviceId(),
                 vkAccount.getExpiresAt());
             redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
-            //!
-            redisService.deleteKey(String.format("info:%s:vk_markets", tgUserId));
+            redisService.deleteInfoCache(tgUserId);
         } else {
-            log.warn("No active VK account found for user ID: {}", tgUserId);
+            log.warn("No active VK account found for user ID to update active account: {}", tgUserId);
             throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
         }
     }

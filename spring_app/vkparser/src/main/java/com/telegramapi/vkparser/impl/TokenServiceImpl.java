@@ -2,6 +2,7 @@ package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
 import com.telegramapi.vkparser.models.VkAccount;
+import com.telegramapi.vkparser.services.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cglib.core.Block;
@@ -11,7 +12,7 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 
 @Service
-public class TokenServiceImpl {
+public class TokenServiceImpl implements TokenService {
     private static final Logger log = LoggerFactory.getLogger(TokenServiceImpl.class);
     private final VkServiceImpl vkService;
     private final BlockingServiceImpl blockingService;
@@ -23,7 +24,6 @@ public class TokenServiceImpl {
         this.vkAccountService = vkAccountService;
     }
 
-    //todo нужен целый аккаунт, не обертка! (т.к. сейв идет)
     public Mono<String> getFreshAccessToken(VkAccountCacheDTO vkDTO, String STATE) {
         return Mono.defer(() -> {
             if (vkDTO.expiresAt().isBefore(LocalDateTime.now().plusSeconds(30))) {
@@ -33,7 +33,7 @@ public class TokenServiceImpl {
                         .flatMap(refresh -> {
                             LocalDateTime newExpiresAt = LocalDateTime.now().plusSeconds(refresh.expiresIn());
 
-                            // Обновляем только нужные поля в БД по ID
+                            //todo
                             blockingService.runBlocking(() ->
                                     vkAccountService.updateVkAccountFields(
                                             vkDTO.id(),
@@ -42,12 +42,7 @@ public class TokenServiceImpl {
                                             newExpiresAt
                                     )
                             );
-//                            vkDTO.setAccessToken(refresh.accessToken());
-//                            vkDTO.setRefreshToken(refresh.refreshToken());
-//                            vkDTO.setExpiresAt(LocalDateTime.now().plusSeconds(refresh.expiresIn()));
-//                            blockingService.runBlocking(() -> vkAccountService.saveVkAccount(vkDTO));
                             log.info("Access token refreshed successfully for VK account ID: {}", vkDTO.id());
-//                            return blockingService.fromBlocking(vkAccount::getAccessToken);
                             return Mono.just(refresh.accessToken());
                         });
             } else {

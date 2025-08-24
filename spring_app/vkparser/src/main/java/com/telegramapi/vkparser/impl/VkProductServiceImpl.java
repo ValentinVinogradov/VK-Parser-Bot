@@ -7,6 +7,7 @@ import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.models.*;
 import com.telegramapi.vkparser.repositories.VkProductRepository;
 import com.telegramapi.vkparser.services.VkMarketService;
+import com.telegramapi.vkparser.services.VkProductService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -23,13 +24,12 @@ import java.util.UUID;
 
 
 @Service
-public class VkProductServiceImpl {
+public class VkProductServiceImpl implements VkProductService {
     private final String STATE = System.getenv("VK_STATE");
     private static final Logger log = LoggerFactory.getLogger(VkProductServiceImpl.class);
     private final VkProductRepository vkProductRepository;
     private final VkServiceImpl vkService;
     private final BlockingServiceImpl blockingService;
-    private final UserServiceImpl userService;
     private final VkMarketService vkMarketService;
     private final VkAccountServiceImpl vkAccountService;
     private final UserMarketServiceImpl userMarketService;
@@ -40,13 +40,12 @@ public class VkProductServiceImpl {
     public VkProductServiceImpl(VkProductRepository vkProductRepository,
                                 VkServiceImpl vkService,
                                 BlockingServiceImpl blockingService,
-                                UserServiceImpl userService, VkMarketService vkMarketService,
+                                VkMarketService vkMarketService,
                                 VkAccountServiceImpl vkAccountService,
                                 UserMarketServiceImpl userMarketService, TokenServiceImpl tokenService, RedisServiceImpl redisService) {
         this.vkProductRepository = vkProductRepository;
         this.vkService = vkService;
         this.blockingService = blockingService;
-        this.userService = userService;
         this.vkMarketService = vkMarketService;
         this.vkAccountService = vkAccountService;
         this.userMarketService = userMarketService;
@@ -69,7 +68,7 @@ public class VkProductServiceImpl {
         return vkProductRepository.findAllByVkMarket(vkMarket);
     }
 
-    public VkProductResponseDTO convertVkProductsToDto(List<VkProduct> vkProducts, Integer page, Long count) {
+    private VkProductResponseDTO convertVkProductsToDto(List<VkProduct> vkProducts, Integer page, Long count) {
         log.debug("Converting VK products to ID DTO. Count: {}", count);
         return new VkProductResponseDTO(
                 vkProducts.stream().map(this::convertVkProductToFullDto).toList(),
@@ -77,7 +76,7 @@ public class VkProductServiceImpl {
                 count);
     }
 
-    public VkProductDTO convertVkProductToFullDto(VkProduct vkProduct) {
+    private VkProductDTO convertVkProductToFullDto(VkProduct vkProduct) {
         return new VkProductDTO(
                 vkProduct.getId(),
                 vkProduct.getTitle(),
@@ -108,14 +107,15 @@ public class VkProductServiceImpl {
                                 vkProduct.setVkMarket(vkMarket);
                                 saveVkProduct(vkProduct);
                             }))
-                            .then(); // заменяем collectList на then(), т.к. результат нам не нужен
+                            .then();
                 })
                 .doOnSuccess(v -> log.info("Successfully synchronized VK products for market ID: {}", vkMarketId))
                 .doOnError(ex -> log.error("Failed to synchronize VK products", ex))
-                .block(); // блокируем, чтобы метод отработал синхронно и вернул управление только после завершения
+                .block();
     }
 
 
+    //todo
     public VkProductResponseDTO getVkProducts(Long tgUserId, int count, int page) {
         log.info("Request to get VK products for Telegram user ID: {}", tgUserId);
         try {
@@ -125,42 +125,9 @@ public class VkProductServiceImpl {
             if (vkCachedProducts != null) {
                 return vkCachedProducts;
             }
-            VkAccountCacheDTO cacheVkAccount = redisService
-                    .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-            log.info("Cached vk account: {}", cacheVkAccount);
-            if (cacheVkAccount == null) {
-                log.info("No found cached vk account");
-                VkAccount activeVkAccount = vkAccountService.getActiveAccount(tgUserId);
-                if (activeVkAccount == null) {
-                    log.warn("No active VK account found for user ID: {}", tgUserId);
-                    throw new RuntimeException("No active VK account found for user ID: " + tgUserId);
-                }
-                cacheVkAccount = new VkAccountCacheDTO(
-                        activeVkAccount.getId(),
-                        activeVkAccount.getAccessToken(),
-                        activeVkAccount.getRefreshToken(),
-                        activeVkAccount.getDeviceId(),
-                        activeVkAccount.getExpiresAt());
-                log.info("Vk account id from db: {}", activeVkAccount.getId());
-                redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), cacheVkAccount);
-            }
+            VkAccountCacheDTO cacheVkAccount = vkAccountService.createVkCacheAccount(tgUserId);
 
-            VkMarket activeVkMarket;
-            VkMarketCacheDTO cachedMarket = redisService
-                    .getValue(String.format("user:%s:active_vk_market", tgUserId), VkMarketCacheDTO.class);
-            if (cachedMarket == null) {
-                UserMarket userMarket = userMarketService.getActiveUserMarket(cacheVkAccount.id());
-                if (userMarket == null) {
-                    throw new IllegalStateException("No active market found for VK account");
-                }
-                activeVkMarket = userMarket.getVkMarket();
-                VkMarketCacheDTO cacheMarketDTO = new VkMarketCacheDTO(userMarket.getId(),
-                        activeVkMarket.getMarketVkId());
-                redisService.setValue(String.format("user:%s:active_vk_market", tgUserId),
-                        cacheMarketDTO);
-            } else {
-                activeVkMarket = vkMarketService.getMarketById(cachedMarket.marketVkId());
-            }
+            VkMarket activeVkMarket = userMarketService.getActiveVkMarket(tgUserId, cacheVkAccount);
 
 
             VkProductResponseDTO productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);

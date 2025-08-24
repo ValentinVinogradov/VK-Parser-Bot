@@ -46,48 +46,56 @@ public class LoginServiceImpl implements LoginService {
         this.tokenService = tokenService;
     }
 
-    //todo разбить по методам
+
     public Mono<VkAccountDTO> handleVkAccountAuth(
             Long tgUserId,
             String code,
             String state,
             String deviceId
     ) {
-        //todo ЦЕПОЧКА:
-        // 1: Создать пользователя
-        // 2: Получить его токены и айди с вк
-        // 3: Создать вк аккаунт
-        // 3.1: Создать его в памяти
-        // 3.2: Сделать запросы на получение данных профиля и магазинов
-        // 3.3: Сохранить в базе данных
-        // 3.4: Активировать аккаунт
         return createTgUser(tgUserId)
-            .flatMap(user -> vkService.getUserTokens(code, state, deviceId)
-                .flatMap(vkTokenResponseDTO -> {
-                    log.debug("Received VK tokens for userId={}, code={}, state={}",
-                            user.getTgUserId(), code, state);
+                .flatMap(user -> vkService.getUserTokens(code, state, deviceId)
+                        .flatMap(vkTokenResponseDTO -> {
+                            log.debug("Received VK tokens for userId={}, code={}, state={}",
+                                    user.getTgUserId(), code, state);
 
+                            Long vkUserId = vkTokenResponseDTO.userId();
+                            String accessToken = vkTokenResponseDTO.accessToken();
+                            String refreshToken = vkTokenResponseDTO.refreshToken();
+                            LocalDateTime expiresAt = LocalDateTime.now()
+                                    .plusSeconds(vkTokenResponseDTO.expiresIn());
 
+                            redisService.deleteInfoCache(tgUserId);
 
-//                    return blockingService.fromBlocking(() -> vkAccountService
-//                                    .existsVkAccountByVkId(vkUserId))
-//                        .flatMap(existsVk -> {
-//                            if (existsVk) {
-//                                log.info("VK account already exists for VK ID={}, skipping creation",
-//                                        vkUserId);
-//
-//                                return editExistingVkAccount(
-//                                        deviceId, vkUserId, accessToken,
-//                                        refreshToken, expiresAt, idToken);
-//                            }
+                            return blockingService.fromBlocking(() ->
+                                            vkAccountService.existsVkAccountByVkId(vkUserId))
+                                    .flatMap(existsVk -> {
+                                        if (existsVk) {
+                                            log.info("VK account already exists for VK ID={}, skipping creation",
+                                                    vkUserId);
 
-                    return createNewVkAccount(
-                            tgUserId, deviceId, user, vkTokenResponseDTO);
-                    })
-            .doOnSubscribe(sub -> log.info("Handling VK auth callback started..."))
-            .doOnSuccess(sub -> log.info("Handling VK auth callback completed successfully!"))
-            .doOnTerminate(() -> log.info("Handling VK auth finished!"))
-            .doOnError(e -> log.error("VK auth callback failed", e)));
+                                            return editAndGetExistingVkAccount(
+                                                    user.getTgUserId(),
+                                                    deviceId,
+                                                    vkUserId,
+                                                    accessToken,
+                                                    refreshToken,
+                                                    expiresAt
+                                            );
+                                        }
+
+                                        return createNewVkAccount(
+                                                tgUserId,
+                                                deviceId,
+                                                user,
+                                                vkTokenResponseDTO
+                                        );
+                                    });
+                        }))
+                .doOnSubscribe(sub -> log.info("Handling VK auth callback started..."))
+                .doOnSuccess(sub -> log.info("Handling VK auth callback completed successfully!"))
+                .doOnTerminate(() -> log.info("Handling VK auth finished!"))
+                .doOnError(e -> log.error("VK auth callback failed", e));
     }
 
     private Mono<VkAccountDTO> createNewVkAccount(
@@ -158,7 +166,6 @@ public class LoginServiceImpl implements LoginService {
                         vkAccount.getRefreshToken(), vkAccount.getDeviceId(),
                         vkAccount.getExpiresAt()
                 );
-                //todo разобраться почему is_active false
                 redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
 
 
@@ -179,25 +186,35 @@ public class LoginServiceImpl implements LoginService {
 }
 
 
-//     private Mono<VkUserInfoDTO> editExistingVkAccount(
-//             String deviceId, Long vkUserId, String accessToken,
-//             String refreshToken, LocalDateTime expiresAt, String idToken) {
-//         return blockingService.fromBlocking(() -> {
-//             VkAccount vkAccount = vkAccountService.getVkAccountByVkId(vkUserId);
-//             // обновление инфы
-//             vkAccount.setDeviceId(deviceId);
-//             vkAccount.setAccessToken(accessToken);
-//             vkAccount.setRefreshToken(refreshToken);
-//             vkAccount.setExpiresAt(expiresAt);
-//             vkAccount.setIdToken(idToken);
-//             // создание dto
-//             return new VkUserInfoDTO(
-//                     vkAccount.getFirstName(),
-//                     vkAccount.getLastName(),
-//                     vkAccount.getScreenName()
-//             );
-//         });
-//     }
+     private Mono<VkAccountDTO> editAndGetExistingVkAccount(
+             Long tgUserId, String deviceId, Long vkUserId, String accessToken,
+             String refreshToken, LocalDateTime expiresAt) {
+         return blockingService.fromBlocking(() -> {
+             VkAccount vkAccount = vkAccountService.getVkAccountByVkId(vkUserId);
+             // обновление инфы
+             vkAccount.setDeviceId(deviceId);
+             vkAccount.setAccessToken(accessToken);
+             vkAccount.setRefreshToken(refreshToken);
+             vkAccount.setExpiresAt(expiresAt);
+
+             vkAccountService.setActiveVkAccount(vkAccount.getId(), tgUserId);
+
+             vkAccountService.saveVkAccount(vkAccount);
+
+             VkAccountCacheDTO vkAccountCacheDTO = vkAccountService.createAccountCacheDTO(vkAccount);
+
+             redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
+
+             // создание dto
+             return new VkAccountDTO(
+                     vkAccount.getId(),
+                     vkAccount.getFirstName(),
+                     vkAccount.getLastName(),
+                     vkAccount.getScreenName(),
+                     vkAccount.getActive()
+             );
+         });
+     }
 
     private Mono<User> createTgUser(Long tgUserId) {
         return blockingService.fromBlocking(() -> {
@@ -223,24 +240,17 @@ public class LoginServiceImpl implements LoginService {
     public Mono<Void> logout(Long tgUserId, UUID userAccountId) {
         log.info("Deleting account for user ID: {} to account ID: {}", tgUserId, userAccountId);
         if (userAccountId != null) {
-            VkAccountCacheDTO cacheVkAccount = redisService
-                    .getValue(String.format("user:%s:active_vk_account", tgUserId), VkAccountCacheDTO.class);
-            if (cacheVkAccount == null) {
-                VkAccount vkAccount = vkAccountService.getVkAccountById(userAccountId);
-                cacheVkAccount = new VkAccountCacheDTO(
-                        vkAccount.getId(),
-                        vkAccount.getAccessToken(),
-                        vkAccount.getRefreshToken(),
-                        vkAccount.getDeviceId(),
-                        vkAccount.getExpiresAt());
-            }
-            if (cacheVkAccount.id() == userAccountId) {
-                redisService.deleteKey(String.format("user:%s:active_vk_account", tgUserId));
+            VkAccountCacheDTO cacheVkAccount = vkAccountService.getVkAccountCacheDTO(tgUserId, userAccountId);
+
+            if (userAccountId.equals(cacheVkAccount.id())) {
+                log.info("Clearing cache about active vk account and vk markets...");
+                redisService.deleteInfoCache(tgUserId);
             }
 
             return blockingService.runBlocking(() -> {
                         vkAccountService.deleteAccountById(userAccountId);
                         log.info("Account deleted locally: {}", userAccountId);
+                        redisService.deleteKey(String.format("info:%s:vk_accounts", tgUserId));
                     })
                     .then(tokenService.getFreshAccessToken(cacheVkAccount, STATE))
                     .flatMap(accessToken -> {

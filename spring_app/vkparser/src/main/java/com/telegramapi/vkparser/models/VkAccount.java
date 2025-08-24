@@ -3,6 +3,8 @@ package com.telegramapi.vkparser.models;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -24,7 +26,6 @@ public class VkAccount {
     @Column(name = "screen_name")
     private String screenName;
 
-    //todo можно вынести а можно и не выносить (я про токены)
     @Column(name = "access_token", columnDefinition = "TEXT", unique = true, nullable = false)
     private String accessToken;
 
@@ -47,6 +48,8 @@ public class VkAccount {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @OneToMany(mappedBy = "vkAccount", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserMarket> userMarkets = new ArrayList<>();
 
     public String getScreenName() {
         return screenName;

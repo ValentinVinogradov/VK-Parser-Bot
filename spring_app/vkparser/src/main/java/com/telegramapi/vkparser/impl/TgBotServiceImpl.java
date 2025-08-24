@@ -26,7 +26,6 @@ public class TgBotServiceImpl implements TgBotService {
         requestBody.put("tg_id", tgUserId);
         requestBody.put("user_info", userInfoDTO);
 
-        // Отправляем POST запрос на питоновский сервер
         return vkWebClient
                 .post()
                 .uri(TG_BOT_CONTAINER_URL + "/vk/user_info")
