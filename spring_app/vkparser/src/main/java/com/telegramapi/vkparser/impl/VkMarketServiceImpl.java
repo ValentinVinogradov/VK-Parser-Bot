@@ -1,5 +1,9 @@
 package com.telegramapi.vkparser.impl;
 
+import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkMarketCacheDTO;
+import com.telegramapi.vkparser.dto.VkMarketDTO;
+import com.telegramapi.vkparser.models.UserMarket;
 import com.telegramapi.vkparser.models.VkMarket;
 import com.telegramapi.vkparser.repositories.VkMarketRepository;
 import com.telegramapi.vkparser.services.VkMarketService;
@@ -7,13 +11,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.UUID;
+
 @Service
 public class VkMarketServiceImpl implements VkMarketService {
     private static final Logger log = LoggerFactory.getLogger(VkMarketServiceImpl.class);
 
+    private final RedisServiceImpl redisService;
+    private final UserMarketServiceImpl userMarketService;
     private final VkMarketRepository vkMarketRepository;
 
-    public VkMarketServiceImpl(VkMarketRepository vkMarketRepository) {
+    public VkMarketServiceImpl(RedisServiceImpl redisService,
+                               UserMarketServiceImpl userMarketService,
+                               VkMarketRepository vkMarketRepository) {
+        this.redisService = redisService;
+        this.userMarketService = userMarketService;
         this.vkMarketRepository = vkMarketRepository;
     }
 
@@ -22,6 +35,7 @@ public class VkMarketServiceImpl implements VkMarketService {
         log.info("Checking if VK market with VK ID {} exists: {}", vkMarketId, exists);
         return exists;
     }
+
 
     public VkMarket getMarketById(Long vkMarketId) {
         log.info("Retrieving VK market by VK ID: {}", vkMarketId);
@@ -33,6 +47,7 @@ public class VkMarketServiceImpl implements VkMarketService {
         }
         return market;
     }
+
 
     public VkMarket createVkMarket(Long vkMarketId, String vkMarketName, String vkMarketUrl) {
         VkMarket vkMarket = new VkMarket();
@@ -50,5 +65,45 @@ public class VkMarketServiceImpl implements VkMarketService {
         vkMarketRepository.save(vkMarket);
         log.info("Saved VK market with VK ID: {}, name='{}'",
                 vkMarket.getMarketVkId(), vkMarket.getMarketName());
+    }
+
+
+    public List<VkMarketDTO> getVkMarketsFromCache(Long tgUserId) {
+        return redisService.
+                getListValue(String.format("info:%s:vk_markets", tgUserId), VkMarketDTO.class);
+    }
+
+    public VkMarket getActiveVkMarket(Long tgUserId, VkAccountCacheDTO cacheVkAccount) {
+        VkMarket activeVkMarket;
+        VkMarketCacheDTO cachedMarket = redisService
+                .getValue(String.format("user:%s:active_vk_market", tgUserId), VkMarketCacheDTO.class);
+        if (cachedMarket == null) {
+            UserMarket userMarket = userMarketService.getActiveUserMarket(cacheVkAccount.id());
+            if (userMarket == null) {
+                throw new IllegalStateException("No active market found for VK account");
+            }
+            activeVkMarket = userMarket.getVkMarket();
+            VkMarketCacheDTO cacheMarketDTO = new VkMarketCacheDTO(userMarket.getId(),
+                    activeVkMarket.getMarketVkId());
+            redisService.setValue(String.format("user:%s:active_vk_market", tgUserId),
+                    cacheMarketDTO);
+        } else {
+            activeVkMarket = getMarketById(cachedMarket.marketVkId());
+        }
+
+        return activeVkMarket;
+    }
+
+    public List<VkMarketDTO> getVkMarketListDTO(UUID activeAccountId) {
+        List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeAccountId);
+        return userMarkets
+                .stream()
+                .map(userMarket -> new VkMarketDTO(
+                        userMarket.getId(),
+                        userMarket.getVkMarket().getMarketName(),
+                        userMarket.getVkMarket().getMembersCount(),
+                        userMarket.getActive()
+                ))
+                .toList();
     }
 }

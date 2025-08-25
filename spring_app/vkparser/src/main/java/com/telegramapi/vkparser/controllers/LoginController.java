@@ -1,7 +1,6 @@
 package com.telegramapi.vkparser.controllers;
 
 import com.telegramapi.vkparser.dto.VkAccountDTO;
-import com.telegramapi.vkparser.dto.VkUserInfoDTO;
 import com.telegramapi.vkparser.enums.ResponseStatusEnum;
 import com.telegramapi.vkparser.impl.LoginServiceImpl;
 import jakarta.validation.constraints.NotBlank;

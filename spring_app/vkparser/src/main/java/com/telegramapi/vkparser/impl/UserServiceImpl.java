@@ -96,28 +96,14 @@ public class UserServiceImpl implements UserService {
         return exists;
     }
 
-    //todo
     public List<VkAccountDTO> getAllUserVkAccounts(Long tgUserId) {
         log.info("Fetching all VK accounts for user ID: {}", tgUserId);
-        List<VkAccountDTO> vkAccounts = redisService.getListValue(
-                String.format("info:%s:vk_accounts", tgUserId),
-                VkAccountDTO.class
-        );
+        List<VkAccountDTO> vkAccounts = vkAccountService.getVkAccountsFromCache(tgUserId);
 
         log.info("Cached vk accounts: {}", vkAccounts);
         if (vkAccounts == null || vkAccounts.isEmpty()) {
             log.info("No found cached vk accounts");
-            vkAccounts = vkAccountService
-                .getAllUserVkAccounts(tgUserId)
-                .stream()
-                .map(vkAccount -> new VkAccountDTO(
-                        vkAccount.getId(),
-                        vkAccount.getFirstName(),
-                        vkAccount.getLastName(),
-                        vkAccount.getScreenName(),
-                        vkAccount.getActive()
-                ))
-                .toList();
+            vkAccounts = vkAccountService.getVkAccountListDTO(tgUserId);
             log.info("Vk accounts from db: {}", vkAccounts);
             if (!vkAccounts.isEmpty()) {
                 redisService.setValue(String.format("info:%s:vk_accounts", tgUserId), vkAccounts);
@@ -127,26 +113,16 @@ public class UserServiceImpl implements UserService {
         return vkAccounts;
     }
 
-    //todo
+
     public List<VkMarketDTO> getAllUserMarkets(Long tgUserId) {
         log.info("Fetching VK markets for user ID: {}", tgUserId);
-        List<VkMarketDTO> vkMarkets = redisService.
-            getListValue(String.format("info:%s:vk_markets", tgUserId), VkMarketDTO.class);
+        List<VkMarketDTO> vkMarkets = vkMarketService.getVkMarketsFromCache(tgUserId);
         log.info("Cached vk markets: {}", vkMarkets);
         if (vkMarkets == null || vkMarkets.isEmpty()) {
             log.info("No found cached vk markets");
             UUID activeAccountId = vkAccountService.getActiveAccountId(tgUserId);
             if (activeAccountId != null) {
-                List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeAccountId);
-                vkMarkets = userMarkets
-                        .stream()
-                        .map(userMarket -> new VkMarketDTO(
-                                userMarket.getId(),
-                                userMarket.getVkMarket().getMarketName(),
-                                userMarket.getVkMarket().getMembersCount(),
-                                userMarket.getActive()
-                        ))
-                        .toList();
+                vkMarkets = vkMarketService.getVkMarketListDTO(activeAccountId);
                 log.info("Vk markets from db: {}", vkMarkets);
                 if (!vkMarkets.isEmpty()) {
                     redisService.setValue(String.format("info:%s:vk_markets", tgUserId), vkMarkets);
@@ -159,6 +135,8 @@ public class UserServiceImpl implements UserService {
         }
         return vkMarkets;
     }
+
+
 
 
     public Mono<List<VkMarket>> getVkMarkets(VkAccount vkAccount) {

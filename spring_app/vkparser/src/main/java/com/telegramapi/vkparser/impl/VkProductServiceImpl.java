@@ -1,7 +1,6 @@
 package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
-import com.telegramapi.vkparser.dto.VkMarketCacheDTO;
 import com.telegramapi.vkparser.dto.VkProductDTO;
 import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.models.*;
@@ -15,9 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -32,7 +29,6 @@ public class VkProductServiceImpl implements VkProductService {
     private final BlockingServiceImpl blockingService;
     private final VkMarketService vkMarketService;
     private final VkAccountServiceImpl vkAccountService;
-    private final UserMarketServiceImpl userMarketService;
     private final TokenServiceImpl tokenService;
     private final RedisServiceImpl redisService;
 
@@ -42,13 +38,13 @@ public class VkProductServiceImpl implements VkProductService {
                                 BlockingServiceImpl blockingService,
                                 VkMarketService vkMarketService,
                                 VkAccountServiceImpl vkAccountService,
-                                UserMarketServiceImpl userMarketService, TokenServiceImpl tokenService, RedisServiceImpl redisService) {
+                                TokenServiceImpl tokenService,
+                                RedisServiceImpl redisService) {
         this.vkProductRepository = vkProductRepository;
         this.vkService = vkService;
         this.blockingService = blockingService;
         this.vkMarketService = vkMarketService;
         this.vkAccountService = vkAccountService;
-        this.userMarketService = userMarketService;
         this.tokenService = tokenService;
         this.redisService = redisService;
     }
@@ -115,41 +111,51 @@ public class VkProductServiceImpl implements VkProductService {
     }
 
 
-    //todo
     public VkProductResponseDTO getVkProducts(Long tgUserId, int count, int page) {
         log.info("Request to get VK products for Telegram user ID: {}", tgUserId);
         try {
-            VkProductResponseDTO vkCachedProducts = redisService
-                    .getValue(String.format("products:%s:%d", tgUserId, page), VkProductResponseDTO.class);
-            log.info("Cached vk products: {}", vkCachedProducts);
+            VkProductResponseDTO vkCachedProducts = getVkCachedProducts(tgUserId, page);
             if (vkCachedProducts != null) {
                 return vkCachedProducts;
             }
             VkAccountCacheDTO cacheVkAccount = vkAccountService.createVkCacheAccount(tgUserId);
+            VkMarket activeVkMarket = vkMarketService.getActiveVkMarket(tgUserId, cacheVkAccount);
 
-            VkMarket activeVkMarket = userMarketService.getActiveVkMarket(tgUserId, cacheVkAccount);
-
-
-            VkProductResponseDTO productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
-
-
-            if (productsFromDb.products().isEmpty()) {
-                log.info("No stored products found. Synchronizing from VK...");
-                syncProducts(activeVkMarket, cacheVkAccount);
-                productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
-            }
-
-            if (productsFromDb.products().isEmpty()) {
-                log.warn("Synchronization returned empty product list");
-                return new VkProductResponseDTO(List.of(), 1, 0L);
-            }
-            redisService.setValue(String.format("products:%s:%d", tgUserId, page), productsFromDb);
-            log.info("Returning {} products from database", productsFromDb.products().size());
-            return productsFromDb;
+            return getVkProductsWithCaching(tgUserId, count, page, activeVkMarket, cacheVkAccount);
         } catch (Exception e) {
             log.error("Failed to fetch VK products for tgUserId={}", tgUserId, e);
             throw new RuntimeException("Unable to retrieve VK products", e);
         }
+    }
+
+    private VkProductResponseDTO getVkProductsWithCaching(Long tgUserId, int count, int page, VkMarket activeVkMarket, VkAccountCacheDTO cacheVkAccount) {
+        VkProductResponseDTO productsFromDb = getOrSyncVkProducts(count, page, activeVkMarket, cacheVkAccount);
+        if (productsFromDb.products().isEmpty()) {
+            log.warn("Synchronization returned empty product list");
+            return new VkProductResponseDTO(List.of(), 1, 0L);
+        }
+        redisService.setValue(String.format("products:%s:%d", tgUserId, page), productsFromDb);
+
+        return productsFromDb;
+    }
+
+    private VkProductResponseDTO getOrSyncVkProducts(int count, int page, VkMarket activeVkMarket, VkAccountCacheDTO cacheVkAccount) {
+        VkProductResponseDTO productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
+
+
+        if (productsFromDb.products().isEmpty()) {
+            log.info("No stored products found. Synchronizing from VK...");
+            syncProducts(activeVkMarket, cacheVkAccount);
+            productsFromDb = getVkProductsFromDatabase(activeVkMarket, count, page);
+        }
+        return productsFromDb;
+    }
+
+    private VkProductResponseDTO getVkCachedProducts(Long tgUserId, int page) {
+        VkProductResponseDTO vkCachedProducts = redisService
+                .getValue(String.format("products:%s:%d", tgUserId, page), VkProductResponseDTO.class);
+        log.info("Cached vk products: {}", vkCachedProducts);
+        return vkCachedProducts;
     }
 
     public void saveVkProduct(VkProduct vkProduct) {

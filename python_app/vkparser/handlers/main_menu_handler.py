@@ -77,6 +77,13 @@ async def view_first_products(message: Message, state: FSMContext):
 
     logger.debug("Загружено %d айди товаров на странице %d", len(products), current_page)
     
+    if total_count is None:
+        total_count = product_data.get("count", None)
+        await state.update_data(total_count=total_count)
+    if total_count == 0:
+        await message.answer("⚠️ В выбранном вами магазине нет товаров!")
+        return
+    
     try:
         local_index = ((current_index - 1) % count) + 1
         product = products[local_index-1]
@@ -85,12 +92,6 @@ async def view_first_products(message: Message, state: FSMContext):
         await message.answer("Не удалось загрузить товар. Попробуйте позже.")
         return
     
-    if total_count is None:
-        total_count = product_data.get("count", None)
-        await state.update_data(total_count=total_count)
-    if total_count == 0:
-        await message.answer("⚠️ В выбранном вами магазине нет товаров!")
-        return
     logger.info(f"Получили товар: {product}")
         
     media = [InputMediaPhoto(media=url) for url in product['photo_urls']]

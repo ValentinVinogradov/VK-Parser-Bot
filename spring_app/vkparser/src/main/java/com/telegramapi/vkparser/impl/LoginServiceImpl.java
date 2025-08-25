@@ -119,8 +119,10 @@ public class LoginServiceImpl implements LoginService {
                     );
                 })
                 .flatMap(vkAccount -> {
-                    Mono<VkUserInfoDTO> vkUserInfoMono = userService.getUserInfo(vkAccount);
-                    Mono<List<VkMarket>> vkMarketsMono = userService.getVkMarkets(vkAccount);
+                    Mono<VkUserInfoDTO> vkUserInfoMono = userService
+                            .getUserInfo(vkAccount);
+                    Mono<List<VkMarket>> vkMarketsMono = userService
+                            .getVkMarkets(vkAccount);
 
                     return getUserInfoAndMarkets(
                             tgUserId, user, vkAccount,
@@ -191,7 +193,6 @@ public class LoginServiceImpl implements LoginService {
              String refreshToken, LocalDateTime expiresAt) {
          return blockingService.fromBlocking(() -> {
              VkAccount vkAccount = vkAccountService.getVkAccountByVkId(vkUserId);
-             // обновление инфы
              vkAccount.setDeviceId(deviceId);
              vkAccount.setAccessToken(accessToken);
              vkAccount.setRefreshToken(refreshToken);
@@ -231,7 +232,8 @@ public class LoginServiceImpl implements LoginService {
                         }).then(Mono.just(user));
                     } else {
                         log.info("User exists, fetching user with tgUserId={}", tgUserId);
-                        return blockingService.fromBlocking(() -> userService.getUserByTgId(tgUserId));
+                        return blockingService.fromBlocking(() ->
+                                userService.getUserByTgId(tgUserId));
                     }
                 });
     }
@@ -240,7 +242,8 @@ public class LoginServiceImpl implements LoginService {
     public Mono<Void> logout(Long tgUserId, UUID userAccountId) {
         log.info("Deleting account for user ID: {} to account ID: {}", tgUserId, userAccountId);
         if (userAccountId != null) {
-            VkAccountCacheDTO cacheVkAccount = vkAccountService.getVkAccountCacheDTO(tgUserId, userAccountId);
+            VkAccountCacheDTO cacheVkAccount = vkAccountService
+                    .getVkAccountCacheDTO(tgUserId, userAccountId);
 
             if (userAccountId.equals(cacheVkAccount.id())) {
                 log.info("Clearing cache about active vk account and vk markets...");

@@ -1,6 +1,7 @@
 package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkAccountDTO;
 import com.telegramapi.vkparser.models.User;
 import com.telegramapi.vkparser.models.VkAccount;
 import com.telegramapi.vkparser.repositories.VkAccountRepository;
@@ -172,14 +173,12 @@ public class VkAccountServiceImpl implements VkAccountService {
     }
 
     public VkAccountCacheDTO createAccountCacheDTO(VkAccount activeVkAccount) {
-        VkAccountCacheDTO cacheVkAccount;
-        cacheVkAccount = new VkAccountCacheDTO(
+        return new VkAccountCacheDTO(
                 activeVkAccount.getId(),
                 activeVkAccount.getAccessToken(),
                 activeVkAccount.getRefreshToken(),
                 activeVkAccount.getDeviceId(),
                 activeVkAccount.getExpiresAt());
-        return cacheVkAccount;
     }
 
     public VkAccountCacheDTO getVkAccountCacheDTO(Long tgUserId, UUID userAccountId) {
@@ -190,5 +189,25 @@ public class VkAccountServiceImpl implements VkAccountService {
             cacheVkAccount = createAccountCacheDTO(vkAccount);
         }
         return cacheVkAccount;
+    }
+
+    public List<VkAccountDTO> getVkAccountsFromCache(Long tgUserId) {
+        return redisService.getListValue(
+                String.format("info:%s:vk_accounts", tgUserId),
+                VkAccountDTO.class
+        );
+    }
+
+    public List<VkAccountDTO> getVkAccountListDTO(Long tgUserId) {
+        return getAllUserVkAccounts(tgUserId)
+                    .stream()
+                    .map(vkAccount -> new VkAccountDTO(
+                            vkAccount.getId(),
+                            vkAccount.getFirstName(),
+                            vkAccount.getLastName(),
+                            vkAccount.getScreenName(),
+                            vkAccount.getActive()
+                    ))
+                    .toList();
     }
 }

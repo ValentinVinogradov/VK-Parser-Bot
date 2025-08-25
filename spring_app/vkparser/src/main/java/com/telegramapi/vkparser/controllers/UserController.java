@@ -6,7 +6,6 @@ import com.telegramapi.vkparser.dto.VkMarketDTO;
 import com.telegramapi.vkparser.enums.ResponseStatusEnum;
 import com.telegramapi.vkparser.impl.UserServiceImpl;
 import com.telegramapi.vkparser.models.User;
-import com.telegramapi.vkparser.models.VkMarket;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;

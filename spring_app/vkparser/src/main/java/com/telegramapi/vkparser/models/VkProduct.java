@@ -56,7 +56,7 @@ public class VkProduct {
     private Integer viewsCount;
 
     @Column(name = "created_at")
-    private Instant createdAt; // timestamp VK-шный
+    private Instant createdAt;
 
     // геттеры и сеттеры
 
