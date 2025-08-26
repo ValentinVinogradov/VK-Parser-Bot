@@ -2,25 +2,22 @@ package com.telegramapi.vkparser.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-@Configuration
-public class WebClientConfig {
-    private final String VK_MAIN_URL = System.getenv("VK_MAIN_URL");
+@Component
+public class WebClientFactory {
 
-    @Bean
-    public WebClient vkWebClient() {
+    private final ExchangeStrategies strategies = ExchangeStrategies.builder()
+            .codecs(configure -> configure.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)) // 10 MB
+            .build();
 
-        // Увеличиваем максимальный размер буфера до 10 МБ
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(configure -> configure.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)) // 10 MB
-                .build();
-
+    public WebClient create(String baseUrl) {
         return WebClient.builder()
-                .baseUrl(VK_MAIN_URL)
+                .baseUrl(baseUrl)
                 .exchangeStrategies(strategies)
                 .filter(logRequest())
                 .filter(logResponse())

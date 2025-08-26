@@ -2,6 +2,7 @@ package com.telegramapi.vkparser.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.telegramapi.vkparser.config.WebClientFactory;
 import com.telegramapi.vkparser.dto.VkRefreshResponseDTO;
 import com.telegramapi.vkparser.dto.VkTokenResponseDTO;
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
@@ -26,6 +27,7 @@ import java.util.List;
 
 @Service
 public class VkServiceImpl implements VkService {
+    private final String VK_MAIN_URL = System.getenv("VK_MAIN_URL");
     private final String CLIENT_ID = System.getenv("VK_CLIENT_ID");
     private final String REDIRECT_URI = System.getenv("VK_CLEAN_REDIRECT_URI");
     private final String GRANT_TYPE_CODE = System.getenv("VK_GRANT_TYPE_CODE");
@@ -36,14 +38,14 @@ public class VkServiceImpl implements VkService {
     private final String VK_URL = System.getenv("VK_URL");
     private final String VK_API_VERSION = System.getenv("VK_API_VERSION");
 
-    private final WebClient vkWebClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(VkServiceImpl.class);
 
+    private final WebClient vkWebClient;
 
 
-    public VkServiceImpl(WebClient vkWebClient) {
-        this.vkWebClient = vkWebClient;
+    public VkServiceImpl(WebClientFactory webClientFactory) {
+        this.vkWebClient = webClientFactory.create(VK_MAIN_URL);
     }
 
     public Mono<VkTokenResponseDTO> getUserTokens(String code, String state, String deviceId) {

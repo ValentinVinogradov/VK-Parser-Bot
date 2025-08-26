@@ -36,5 +36,9 @@ HELP.md
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# === AI Agent ===
+ai_app/har_and_cookies/
+ai_app/generated_media/
+
 ### VS Code ###
 .vscode/
