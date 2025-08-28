@@ -26,10 +26,7 @@ async def show_market_menu(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ProfileState.choose_market)
     logger.debug(f"Установили состояние choose_market")
     
-    #!
     markets = await get_user_markets(callback.from_user.id)
-    
-    
     
     await callback.message.answer("Выберите активный магазин:", reply_markup=await market_menu_keyboard(markets))
 
@@ -45,8 +42,6 @@ async def select_active_market(callback: CallbackQuery, state: FSMContext):
     market_id = callback.data.split(":")[1]
     logger.debug(f"Выбранный магазин: {market_id}")
     
-    
-    #????????????????????????????????????????????????????????????????????????????
     prev_active_vk_account = await redis.get(f"user:{user_id}:active_vk_account")
     logger.info(f"Предыдущий активный магазин из кеша: {prev_active_vk_account}")
     

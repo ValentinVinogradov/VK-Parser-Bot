@@ -27,6 +27,11 @@ async def show_pages(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ProductState.main_show)
     logger.info(f"Установлено состояние main_show")
     
+    loading_msg = await callback.bot.send_message(
+        chat_id=callback.message.chat.id,
+        text="⏳ Товар загружается…"
+    )
+    
     user_id = callback.from_user.id
     
     data = await state.get_data()
@@ -51,9 +56,7 @@ async def show_pages(callback: CallbackQuery, state: FSMContext):
         
     await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(first_page_index, total_count))
 
-    
-    #TODO: может пригодится
-    # first_product = products[0] if len(products) > 0 else None
+    await loading_msg.delete()
 
 
 @product_menu_handler.callback_query(F.data.startswith("product:"), ProductState.main_show)
@@ -65,6 +68,11 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
     count = 5
     new_index = int(callback.data.split(":")[1])
     logger.info(f"Новый индекс товара: {new_index}")
+    
+    loading_msg = await callback.bot.send_message(
+        chat_id=callback.message.chat.id,
+        text="⏳ Товар загружается…"
+    )
 
     data = await state.get_data()
     
@@ -98,9 +106,10 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.answer_media_group(media=media)
     await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(new_index, total_count))
+    
+    await loading_msg.delete()
 
 
-# TODO: подумать как реализовать разделение на страницы сами страницы
 @product_menu_handler.callback_query(F.data == "choose_page", ProductState.main_show)
 async def choose_page(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ProductState.choose_page)

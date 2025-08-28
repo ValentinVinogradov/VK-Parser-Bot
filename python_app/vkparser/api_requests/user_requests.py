@@ -146,3 +146,17 @@ async def delete_user(tg_id, account_id):
                 return
             else:
                 return False
+
+
+async def ask_ai(tg_id):
+    url = BASE_URL + f'/ai/ask-products?tg_id={tg_id}'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            data = await response.json()
+            logger.debug(f"Response url: {url}")
+            logger.debug(f"Response status: {response.status}")
+            logger.debug(f"Response data: {data}")
+            if response.status == 200:
+                return data
+            else:
+                return False
