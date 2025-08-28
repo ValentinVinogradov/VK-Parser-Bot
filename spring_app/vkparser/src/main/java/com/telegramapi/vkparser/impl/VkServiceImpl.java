@@ -20,6 +20,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import java.util.stream.Collectors;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -81,19 +82,34 @@ public class VkServiceImpl implements VkService {
         requestBody.add("device_id", deviceId);
         requestBody.add("state", state);
 
-        log.info("Attempting to refresh user tokens with refreshToken=*****, state={}, deviceId={}", state, deviceId);
+        log.info("Attempting to refresh user tokens with refreshToken={}, state={}, deviceId={}, grant_type={}", refreshToken, state, deviceId, GRANT_TYPE_TOKEN);
 
         return vkWebClient
-            .post()
-            .uri(TOKEN_URL)
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(VkRefreshResponseDTO.class)
-            .doOnSubscribe(subscription -> log.info("Refreshing user tokens..."))
-            .doOnSuccess(response -> log.info("User tokens refreshed successfully: newAccessToken={}, expiresIn={}",
-                    response.accessToken(), response.expiresIn()))
-            .doOnError(error -> log.error("Failed to refresh user tokens", error));
+                .post()
+                .uri(TOKEN_URL)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class) // сначала читаем ответ как строку
+                .doOnNext(raw -> log.info("Raw VK response: {}", raw)) // логируем как есть
+                .map(raw -> { // а потом вручную маппим в DTO
+                    try {
+                        return new ObjectMapper().readValue(raw, VkRefreshResponseDTO.class);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to parse VK response: " + raw, e);
+                    }
+                })
+                .doOnSubscribe(sub -> {
+                    // собираем MultiValueMap в form-urlencoded строку
+                    String bodyAsFormData = requestBody.entrySet().stream()
+                            .map(e -> e.getKey() + "=" + String.join(",", e.getValue()))
+                            .collect(Collectors.joining("&"));
+
+                    log.info("VK refresh token request body: {}", bodyAsFormData);
+                })
+                .doOnSuccess(response -> log.info("User tokens refreshed successfully: newAccessToken={}, expiresIn={}",
+                        response.accessToken(), response.expiresIn()))
+                .doOnError(error -> log.error("Failed to refresh user tokens", error));
     }
 
     public Mono<Void> logout(String accessToken) {
@@ -223,6 +239,7 @@ public class VkServiceImpl implements VkService {
 
 
     private static VkParsedProduct parseVkProduct(JsonNode item) {
+        log.info("JsonNode item={}", item);
         long vkProductId = item.path("id").asLong();
         String title = item.path("title").asText();
         String category = item.path("category").path("name").asText();
@@ -257,6 +274,7 @@ public class VkServiceImpl implements VkService {
     }
 
     private static VkProduct buildVkProduct(VkParsedProduct parsed) {
+        log.info("Parsed product={}", parsed);
         VkProduct vkProduct = new VkProduct();
         vkProduct.setVkProductId(parsed.vkProductId());
         vkProduct.setTitle(parsed.title());

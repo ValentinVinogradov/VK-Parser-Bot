@@ -1,6 +1,7 @@
 package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.dto.VkUserInfoDTO;
+import com.telegramapi.vkparser.config.WebClientFactory;
 import com.telegramapi.vkparser.services.TgBotService;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,10 @@ public class TgBotServiceImpl implements TgBotService {
     private final WebClient vkWebClient;
     private final String TG_BOT_CONTAINER_URL = System.getenv("TG_BOT_CONTAINER_URL");
 
-    public TgBotServiceImpl(WebClient vkWebClient) {
-        this.vkWebClient = vkWebClient;
+    public TgBotServiceImpl(WebClientFactory webClientFactory) {
+        this.vkWebClient = webClientFactory.create(TG_BOT_CONTAINER_URL);
     }
+
 
     @Override
     public Mono<String> notifyAuthorizationSuccess(Long tgUserId, VkUserInfoDTO userInfoDTO) {

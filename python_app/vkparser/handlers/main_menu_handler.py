@@ -25,7 +25,6 @@ main_menu_router = Router()
 main_menu_router.message.middleware(MainMenuMiddleware())
 
 
-# TODO: сделать как то универсальным этот метод
 @main_menu_router.message(F.text == "🛍 Просмотр товаров")
 async def view_first_products(message: Message, state: FSMContext):
     logger.info(f"Нажата кнопка 🛍 Просмотр товаров")
@@ -47,6 +46,8 @@ async def view_first_products(message: Message, state: FSMContext):
     
     total_count = data.get("total_count", None)
     logger.debug(f"Total count from cache: {total_count}")
+    
+    loading_msg = await message.answer("⏳ Товар загружается…")
     
     
     if current_index is None or \
@@ -103,6 +104,8 @@ async def view_first_products(message: Message, state: FSMContext):
     logger.debug("Отправлены фото товара %s", product['id'])
 
     await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
+    
+    await loading_msg.delete()
 
 
 
@@ -141,3 +144,22 @@ async def update_profile_handler(callback: CallbackQuery, state: FSMContext):
         logger.debug(f"Текст совпадает.")
         return
     await callback.message.edit_text(text, reply_markup=profile_menu_keyboard(vk_markets))
+
+
+@main_menu_router.message(F.text == "📊 Аналитика товаров с ИИ")
+async def ai_handler(message: types.Message, state: FSMContext):
+    logger.info("Нажата кнопка bb")
+    
+    user_id = message.from_user.id
+    await state.set_state(ProfileState.profile)
+    logger.debug("Установили состояние profile")
+    
+    loading_msg = await message.answer("⏳ ИИ анализирует…")
+    
+    try:
+        ai_result = await ask_ai(user_id)
+        ai_text = ai_result.get("message", "❌ Нет ответа от ИИ")
+        
+        await message.answer(ai_text)
+    finally:
+        await loading_msg.delete()

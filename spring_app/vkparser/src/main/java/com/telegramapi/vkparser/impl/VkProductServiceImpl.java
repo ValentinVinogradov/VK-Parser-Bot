@@ -1,6 +1,7 @@
 package com.telegramapi.vkparser.impl;
 
 import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkProductAIRequestDTO;
 import com.telegramapi.vkparser.dto.VkProductDTO;
 import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.models.*;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -62,6 +64,53 @@ public class VkProductServiceImpl implements VkProductService {
     public List<VkProduct> getAllVkProductsFromDatabase(VkMarket vkMarket) {
         log.debug("Fetching all VK products from database for market ID: {}", vkMarket.getId());
         return vkProductRepository.findAllByVkMarket(vkMarket);
+    }
+
+    public List<VkProduct> getOrSyncAllProducts(VkMarket activeVkMarket, VkAccountCacheDTO cacheVkAccount) {
+        List<VkProduct> productsFromDb = getAllVkProductsFromDatabase(activeVkMarket);
+
+
+        if (productsFromDb.isEmpty()) {
+            log.info("No stored products found. Start synchronizing from VK...");
+            syncProducts(activeVkMarket, cacheVkAccount);
+            productsFromDb = getAllVkProductsFromDatabase(activeVkMarket);
+        }
+        return productsFromDb;
+    }
+
+    public List<VkProductAIRequestDTO> getAllVkProductsForAI(Long tgUserId) {
+        log.info("Request to get all VK products for Telegram user ID: {}", tgUserId);
+        try {
+            VkAccountCacheDTO cacheVkAccount = vkAccountService.createVkCacheAccount(tgUserId);
+            VkMarket activeVkMarket = vkMarketService.getActiveVkMarket(tgUserId, cacheVkAccount);
+
+
+            List<VkProduct> vkProducts = getOrSyncAllProducts(activeVkMarket, cacheVkAccount);
+            if (vkProducts.isEmpty()) {
+                log.warn("Synchronization all products returned empty product list");
+                return List.of();
+            }
+
+            return convertProductListToAIDTO(vkProducts);
+        } catch (Exception e) {
+            log.error("Failed to fetch VK products for tgUserId={}", tgUserId, e);
+            throw new RuntimeException("Unable to retrieve VK products", e);
+        }
+    }
+
+    private List<VkProductAIRequestDTO> convertProductListToAIDTO(List<VkProduct> vkProducts) {
+        return vkProducts
+                .stream()
+                .map(vkProduct -> new VkProductAIRequestDTO(
+                        vkProduct.getTitle(),
+                        vkProduct.getPrice(),
+                        vkProduct.getLikesCount(),
+                        vkProduct.getRepostCount(),
+                        vkProduct.getViewsCount(),
+                        vkProduct.getReviewsCount(),
+                        vkProduct.getCreatedAt()
+                ))
+                .toList();
     }
 
     private VkProductResponseDTO convertVkProductsToDto(List<VkProduct> vkProducts, Integer page, Long count) {

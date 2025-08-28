@@ -30,7 +30,7 @@ class MainMenuMiddleware(BaseMiddleware):
             logger.info("Пользователь вошел")
             return await handler(event, data)
 
-        elif event.text == "🛍 Просмотр товаров":
+        elif event.text == "🛍 Просмотр товаров" or event.text == "📊 Аналитика товаров с ИИ":
             if not await self.exists_active_vk(user_id):
                 return await self.__show_auth_message(event, user_id, state)
             if not await self.is_active_market(user_id):

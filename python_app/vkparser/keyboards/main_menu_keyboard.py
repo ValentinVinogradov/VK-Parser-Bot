@@ -7,8 +7,9 @@ from os import getenv
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🛍 Просмотр товаров")],
             [KeyboardButton(text="👤 Профиль")],
+            [KeyboardButton(text="🛍 Просмотр товаров")],
+            [KeyboardButton(text="📊 Аналитика товаров с ИИ")]
         ],
         resize_keyboard=True
     )

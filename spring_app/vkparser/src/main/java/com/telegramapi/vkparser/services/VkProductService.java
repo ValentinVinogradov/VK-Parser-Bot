@@ -1,6 +1,7 @@
 package com.telegramapi.vkparser.services;
 
 import com.telegramapi.vkparser.dto.VkAccountCacheDTO;
+import com.telegramapi.vkparser.dto.VkProductAIRequestDTO;
 import com.telegramapi.vkparser.dto.VkProductDTO;
 import com.telegramapi.vkparser.dto.VkProductResponseDTO;
 import com.telegramapi.vkparser.models.VkMarket;
@@ -22,5 +23,5 @@ public interface VkProductService {
 
     VkProductDTO getVkProductById(UUID vkProductId);
 
-
+    List<VkProductAIRequestDTO> getAllVkProductsForAI(Long tgUserId);
 }
