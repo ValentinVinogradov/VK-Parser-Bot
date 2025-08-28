@@ -34,11 +34,12 @@ async def back_to_profile(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     await callback.message.delete()
 
+
 @account_router.callback_query(F.data == "back_to_account_settings", AccountState.choose_page)
 async def back_to_profile(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     await state.set_state(ProfileState.configure_vk_account)
-    await callback.message.delete()
+    await callback.message.edit_reply_markup("Выберите действие:", reply_markup=await account_menu_keyboard())
 
 
 @account_router.callback_query(F.data == "change_vk_account", ProfileState.configure_vk_account)
@@ -50,8 +51,8 @@ async def change_vk_account(callback: CallbackQuery, state: FSMContext):
     
     vk_accounts = await get_user_vk_accounts(user_id)
     
-    await callback.message.answer("Выберите аккаунт:", reply_markup=await accounts_choose_keyboard(vk_accounts, mode="activate"))
-
+    await callback.message.edit_reply_markup("Выберите аккаунт:", reply_markup=await accounts_choose_keyboard(vk_accounts, mode="activate"))
+    
 
 @account_router.callback_query(F.data == "add_vk_account", ProfileState.configure_vk_account)
 async def add_vk_account(callback: CallbackQuery, state: FSMContext):
@@ -60,9 +61,9 @@ async def add_vk_account(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     vk_accounts = await get_user_vk_accounts(user_id)
     if len(vk_accounts) > 2:
-        await callback.message.answer("Нельзя привязать более 3-х аккаунтов:", reply_markup=await add_account_keyboard(user_id))
+        await callback.message.answer("🚫 Нельзя привязать более 3-х аккаунтов!")
     else:
-        await callback.message.answer("Войдите в другой аккаунт:", reply_markup=await add_account_keyboard(user_id))
+        await callback.message.edit_reply_markup("Войдите в другой аккаунт:", reply_markup=await add_account_keyboard(user_id))
 
 
 @account_router.callback_query(F.data == "delete_vk_account", ProfileState.configure_vk_account)
@@ -73,10 +74,9 @@ async def logout_vk_account(callback: CallbackQuery, state: FSMContext):
     vk_accounts = await get_user_vk_accounts(user_id)
     
     
-    await callback.message.answer("Выберите VK аккаунт для выхода:", reply_markup=await accounts_choose_keyboard(vk_accounts, mode="delete"))
+    await callback.message.edit_reply_markup("Выберите VK аккаунт для выхода:", reply_markup=await accounts_choose_keyboard(vk_accounts, mode="delete"))
 
 
-#TODO: добавить логику для смены аккаунта со связью с базой данных
 @account_router.callback_query(F.data.startswith("activate_vk_account:"), AccountState.choose_page)
 async def activate_vk_account(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
@@ -88,8 +88,6 @@ async def activate_vk_account(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     
     vk_accounts = await get_user_vk_accounts(user_id)
-    
-    
     
     logger.info(f"Аккаунты: {vk_accounts}")
     
@@ -118,7 +116,6 @@ async def activate_vk_account(callback: CallbackQuery, state: FSMContext):
     debounce_manager.debounce(callback.from_user.id, debounced_update) 
 
 
-#TODO: добавить логику для удаления аккаунта из базы данных
 @account_router.callback_query(F.data.startswith("delete_vk_account:"), AccountState.choose_page)
 async def delete_vk_account(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
@@ -130,12 +127,9 @@ async def delete_vk_account(callback: CallbackQuery, state: FSMContext):
     
     vk_accounts = await get_user_vk_accounts(user_id)
     
-    # Удаляем аккаунт из списка
     vk_accounts = [account for account in vk_accounts if account.get("id", None) != account_id]
     
     await redis.set(f"info:{user_id}:vk_accounts", json.dumps(vk_accounts))
     
     await callback.message.edit_reply_markup(reply_markup=await accounts_choose_keyboard(vk_accounts, mode="delete"))
-    
-    await callback.message.answer("Аккаунт удален.")
     

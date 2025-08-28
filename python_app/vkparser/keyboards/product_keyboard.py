@@ -2,7 +2,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 def product_menu_keyboard(current_index: int, total_count: int) -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
-
     keyboard.inline_keyboard.append([
         InlineKeyboardButton(text="🗂️ Выбрать страницу", callback_data="choose_page")
     ])

@@ -2,6 +2,7 @@ package com.telegramapi.vkparser.impl;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 import com.telegramapi.vkparser.services.RedisService;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -58,6 +59,14 @@ public class RedisServiceImpl implements RedisService {
 
     public void setValueWithTTL(String key, Object value, long ttlSeconds) {
         redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttlSeconds));
+    }
+
+    public void deleteAllProductPages(Long tgUserId) {
+        String pattern = "products:" + tgUserId + ":*";
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (!keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
     }
 }
 

@@ -6,8 +6,6 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
 EXPOSE 9090
 
 CMD ["watchmedo", "auto-restart", "--directory=.", "--pattern=*.py", "--recursive", "--debug-force-polling", "--", "python", "app.py"]

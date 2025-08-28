@@ -74,25 +74,46 @@ public class VkMarketServiceImpl implements VkMarketService {
     }
 
     public VkMarket getActiveVkMarket(Long tgUserId, VkAccountCacheDTO cacheVkAccount) {
+        log.info("Fetching active VK Market for user tgUserId={}", tgUserId);
+
         VkMarket activeVkMarket;
+
+        // Try to get from cache first
         VkMarketCacheDTO cachedMarket = redisService
                 .getValue(String.format("user:%s:active_vk_market", tgUserId), VkMarketCacheDTO.class);
+
         if (cachedMarket == null) {
+            log.info("No active VK Market found in cache for tgUserId={}, querying database", tgUserId);
+
             UserMarket userMarket = userMarketService.getActiveUserMarket(cacheVkAccount.id());
             if (userMarket == null) {
+                log.error("No active market found for VK account {}", cacheVkAccount.id());
                 throw new IllegalStateException("No active market found for VK account");
             }
+
             activeVkMarket = userMarket.getVkMarket();
+            log.info("Active market found in database: marketVkId={}, userMarketId={}",
+                    activeVkMarket.getMarketVkId(), userMarket.getId());
+
             VkMarketCacheDTO cacheMarketDTO = new VkMarketCacheDTO(userMarket.getId(),
                     activeVkMarket.getMarketVkId());
-            redisService.setValue(String.format("user:%s:active_vk_market", tgUserId),
-                    cacheMarketDTO);
+
+            redisService.setValue(
+                    String.format("user:%s:active_vk_market", tgUserId),
+                    cacheMarketDTO
+            );
+            log.info("Saved active VK Market to cache for tgUserId={}", tgUserId);
+
         } else {
+            log.info("Active VK Market found in cache: marketVkId={}", cachedMarket.marketVkId());
             activeVkMarket = getMarketById(cachedMarket.marketVkId());
+            log.debug("Loaded VK Market from database by cachedMarket.marketVkId={}", cachedMarket.marketVkId());
         }
 
+        log.info("Returning active VK Market: marketVkId={}", activeVkMarket.getMarketVkId());
         return activeVkMarket;
     }
+
 
     public List<VkMarketDTO> getVkMarketListDTO(UUID activeAccountId) {
         List<UserMarket> userMarkets = userMarketService.getAllUserMarkets(activeAccountId);

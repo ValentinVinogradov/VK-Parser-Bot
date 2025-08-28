@@ -102,8 +102,8 @@ async def view_first_products(message: Message, state: FSMContext):
 
     await message.answer_media_group(media=media)
     logger.debug("Отправлены фото товара %s", product['id'])
-
-    await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
+    if total_count > 1:
+        await message.answer("Выберите действие:", reply_markup=product_menu_keyboard(current_index, total_count))
     
     await loading_msg.delete()
 

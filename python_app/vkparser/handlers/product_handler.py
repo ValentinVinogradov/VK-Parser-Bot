@@ -80,8 +80,6 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
     current_index = data.get("current_index", None)
     current_page = data.get("current_page", None)
     
-    #TODO можно локальный индекс тоже в кеш засунуть и потом проверку на него
-    
     current_index = new_index
     current_page = ((current_index - 1) // count) + 1
     logger.info(f"Текущая страница: {current_page}")
@@ -105,6 +103,7 @@ async def show_product(callback: CallbackQuery, state: FSMContext):
     media[0].parse_mode = "MarkdownV2"
 
     await callback.message.answer_media_group(media=media)
+    
     await callback.message.answer("Выберите действие:", reply_markup=product_menu_keyboard(new_index, total_count))
     
     await loading_msg.delete()

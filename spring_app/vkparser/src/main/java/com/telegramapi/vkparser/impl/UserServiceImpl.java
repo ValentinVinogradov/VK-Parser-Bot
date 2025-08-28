@@ -255,6 +255,8 @@ public class UserServiceImpl implements UserService {
                 userMarketId, activeUserMarket.getVkMarket().getMarketVkId()
             );
             redisService.setValue(String.format("user:%s:active_vk_market", tgUserId), vkMarketCacheDTO);
+            redisService.deleteKey(String.format("fsm:%s:data", tgUserId));
+            redisService.deleteAllProductPages(tgUserId);
             log.info("New active vk market insert in cache");
         } else {
             log.warn("No active VK account found for user ID to update active market: {}", tgUserId);
@@ -274,6 +276,9 @@ public class UserServiceImpl implements UserService {
                 vkAccount.getDeviceId(),
                 vkAccount.getExpiresAt());
             redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
+            redisService.deleteKey(String.format("user:%s:active_vk_market", tgUserId));
+            redisService.deleteKey(String.format("fsm:%s:data", tgUserId));
+            redisService.deleteAllProductPages(tgUserId);
             redisService.deleteInfoCache(tgUserId);
         } else {
             log.warn("No active VK account found for user ID to update active account: {}", tgUserId);

@@ -169,6 +169,8 @@ public class LoginServiceImpl implements LoginService {
                         vkAccount.getExpiresAt()
                 );
                 redisService.setValue(String.format("user:%s:active_vk_account", tgUserId), vkAccountCacheDTO);
+                redisService.deleteKey(String.format("user:%s:active_vk_market", tgUserId));
+                redisService.deleteKey(String.format("fsm:%s:data", tgUserId));
 
 
                 return new VkAccountDTO(
@@ -253,7 +255,8 @@ public class LoginServiceImpl implements LoginService {
             return blockingService.runBlocking(() -> {
                         vkAccountService.deleteAccountById(userAccountId);
                         log.info("Account deleted locally: {}", userAccountId);
-                        redisService.deleteKey(String.format("info:%s:vk_accounts", tgUserId));
+                        redisService.deleteKey(String.format("user:%s:active_vk_market", tgUserId));
+                        redisService.deleteKey(String.format("fsm:%s:data", tgUserId));
                     })
                     .then(tokenService.getFreshAccessToken(cacheVkAccount, STATE))
                     .flatMap(accessToken -> {
